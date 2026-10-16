@@ -59,7 +59,7 @@ export class BackendClient {
     this.fetchImpl = opts.fetchImpl ?? ((...args) => fetch(...args));
   }
 
-  async request(method: 'GET' | 'POST' | 'DELETE', path: string, body?: unknown, timeoutMs = this.opts.timeoutMs ?? 120_000): Promise<unknown> {
+  async request(method: 'GET' | 'POST' | 'DELETE', path: string, body?: unknown, timeoutMs = this.opts.timeoutMs ?? 300_000): Promise<unknown> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     const headers: Record<string, string> = {};
