@@ -1,0 +1,103 @@
+@import 'tailwindcss';
+
+/* Warm neutral surfaces, soft charcoal ink, one restrained accent. */
+:root {
+  --cf-bg: #f6f4f1;
+  --cf-surface: #ffffff;
+  --cf-surface-2: #f1eeea;
+  --cf-line: #e4ded7;
+  --cf-ink: #1f1d1b;
+  --cf-muted: #6e6862;
+  --cf-accent: #2f6b5e;
+  --cf-accent-ink: #ffffff;
+  --cf-accent-soft: #e3efeb;
+  --cf-ok: #2f7a55;
+  --cf-ok-soft: #e5f2ea;
+  --cf-warn: #94650f;
+  --cf-warn-soft: #fbf1dc;
+  --cf-danger: #a83a32;
+  --cf-danger-soft: #f8e4e1;
+  --cf-neutral: #5f5a55;
+  --cf-neutral-soft: #eeebe7;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --cf-bg: #171615;
+    --cf-surface: #201f1d;
+    --cf-surface-2: #2a2826;
+    --cf-line: #36332f;
+    --cf-ink: #edeae6;
+    --cf-muted: #a39d96;
+    --cf-accent: #86c2b2;
+    --cf-accent-ink: #10201c;
+    --cf-accent-soft: #22332e;
+    --cf-ok: #7fc59e;
+    --cf-ok-soft: #1f3128;
+    --cf-warn: #e2b766;
+    --cf-warn-soft: #362c1a;
+    --cf-danger: #ec8f86;
+    --cf-danger-soft: #3a2220;
+    --cf-neutral: #b4aea7;
+    --cf-neutral-soft: #2c2a27;
+    color-scheme: dark;
+  }
+}
+
+@theme inline {
+  --color-bg: var(--cf-bg);
+  --color-surface: var(--cf-surface);
+  --color-surface-2: var(--cf-surface-2);
+  --color-line: var(--cf-line);
+  --color-ink: var(--cf-ink);
+  --color-muted: var(--cf-muted);
+  --color-accent: var(--cf-accent);
+  --color-accent-ink: var(--cf-accent-ink);
+  --color-accent-soft: var(--cf-accent-soft);
+  --color-ok: var(--cf-ok);
+  --color-ok-soft: var(--cf-ok-soft);
+  --color-warn: var(--cf-warn);
+  --color-warn-soft: var(--cf-warn-soft);
+  --color-danger: var(--cf-danger);
+  --color-danger-soft: var(--cf-danger-soft);
+  --color-neutral: var(--cf-neutral);
+  --color-neutral-soft: var(--cf-neutral-soft);
+  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--cf-bg);
+  color: var(--cf-ink);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible {
+  outline: 2px solid var(--cf-accent);
+  outline-offset: 2px;
+}
+
+input,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--cf-line);
+  border-radius: 8px;
+}
