@@ -102,6 +102,18 @@ describe('dropdown wording and format mismatches', () => {
   });
 });
 
+describe('tabs whose address Chrome hides', () => {
+  it('treats a hidden URL as scannable (Google Forms) and only real browser pages as blocked', async () => {
+    const { isRestrictedUrl, parseTabUrl } = await import('../apps/extension/src/services/tabs');
+    expect(isRestrictedUrl(undefined)).toBe(false); // hidden address: try to scan, ask for access if needed
+    expect(isRestrictedUrl('https://docs.google.com/forms/d/e/abc/viewform')).toBe(false);
+    expect(parseTabUrl('https://docs.google.com/forms/d/e/abc/viewform')?.domain).toBe('docs.google.com');
+    expect(isRestrictedUrl('chrome://extensions')).toBe(true);
+    expect(isRestrictedUrl('chrome-extension://abc/sidepanel.html')).toBe(true);
+    expect(isRestrictedUrl('https://chromewebstore.google.com/detail/x')).toBe(true);
+  });
+});
+
 describe('undo and locate', () => {
   it('restores the previous values after a fill', () => {
     document.body.innerHTML = `<label for="n">Full Name</label><input id="n" value="">

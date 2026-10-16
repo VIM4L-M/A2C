@@ -5,9 +5,12 @@ import { ProposalList } from '../components/ProposalList';
 import { Button, Card, EmptyState, Notice, SectionTitle, Stat } from '../components/ui';
 import { useApp } from '../hooks/useApp';
 import { toFillInstructions, useProposals } from '../hooks/useProposals';
-import { fillTab, getActiveTab, locateOnPage, parseTabUrl, requestSitePermission, scanTab, TabError, undoFill, type ActiveTab } from '../services/tabs';
+import { fillTab, getActiveTab, locateOnPage, parseTabUrl, requestSitePermission, requestWebPermission, scanTab, TabError, undoFill, type ActiveTab } from '../services/tabs';
 
 type Phase = 'idle' | 'scanning' | 'mapping' | 'review' | 'filling';
+
+const UNKNOWN_SITE = 'unknown-site';
+const HIDDEN_SITE = 'This tab (address shown after scan)';
 
 export function AutofillTab() {
   const app = useApp();
@@ -30,8 +33,10 @@ export function AutofillTab() {
       try {
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
         const parsed = parseTabUrl(tab?.url);
-        setCurrentDomain(parsed?.domain ?? null);
-        if (scanTabInfo && (tab?.id !== scanTabInfo.id || parsed?.origin !== scanTabInfo.origin || tab?.url !== scanTabInfo.url)) setStale(true);
+        setCurrentDomain(parsed?.domain ?? (tab && !tab.url ? HIDDEN_SITE : null));
+        // Chrome hides addresses of sites A2C cannot access; then only the tab id can be compared.
+        const moved = tab?.id !== scanTabInfo?.id || (tab?.url && scanTabInfo?.url && tab.url !== scanTabInfo.url);
+        if (scanTabInfo && moved) setStale(true);
       } catch {
         setCurrentDomain(null);
       }
@@ -69,16 +74,19 @@ export function AutofillTab() {
     try {
       const tab = await getActiveTab();
       const result = await scanTab(tab.id);
-      setScanTabInfo(tab);
+      // The content script reports the real origin, even when Chrome hid the URL from us.
+      const domain = new URL(result.origin).hostname;
+      setScanTabInfo({ ...tab, origin: result.origin, domain });
+      setCurrentDomain(domain);
       setScan(result);
       setPhase('mapping');
-      const ps = await run(result, app.facts, app.lockedKeys, app.provider, tab.domain);
+      const ps = await run(result, app.facts, app.lockedKeys, app.provider, domain);
       await app.record({ type: 'scan', blocked: ps.filter((p) => p.status === 'blocked').length });
       setPhase('review');
     } catch (e) {
       if (e instanceof TabError && e.code === 'needs_permission') {
         try {
-          setNeedsPermission((await getActiveTab()).origin);
+          setNeedsPermission((await getActiveTab()).origin ?? UNKNOWN_SITE);
         } catch {
           setError(e.message);
         }
@@ -89,8 +97,8 @@ export function AutofillTab() {
 
   const grant = async () => {
     if (!needsPermission) return;
-    // Called directly from the click handler (user gesture). Grants this one site.
-    const ok = await requestSitePermission(needsPermission);
+    // Called directly from the click handler (user gesture).
+    const ok = needsPermission === UNKNOWN_SITE ? await requestWebPermission() : await requestSitePermission(needsPermission);
     if (ok) await doScan();
     else setError('Permission was not granted. A2C cannot read this page.');
   };
@@ -106,7 +114,7 @@ export function AutofillTab() {
     setPhase('filling');
     try {
       const tab = await getActiveTab();
-      if (tab.id !== scanTabInfo.id || tab.origin !== scan.origin) {
+      if (tab.id !== scanTabInfo.id || (tab.origin !== null && tab.origin !== scan.origin)) {
         setStale(true);
         throw new Error('The page or tab changed since the scan. Rescan before filling.');
       }
@@ -167,7 +175,7 @@ export function AutofillTab() {
             <div className="text-[11px] text-muted">Current site</div>
             <div className="flex items-center gap-1.5 truncate font-medium">
               <Globe className="size-3.5 shrink-0 text-muted" aria-hidden />
-              <span className="truncate">{currentDomain ?? 'No scannable page'}</span>
+              <span className="truncate">{currentDomain ?? 'Browser page (open a website)'}</span>
             </div>
           </div>
           <Button variant="primary" icon={ScanLine} loading={phase === 'scanning' || phase === 'mapping'} disabled={busy} onClick={doScan}>
@@ -184,7 +192,7 @@ export function AutofillTab() {
         ) : null}
       </Card>
 
-      {needsPermission ? (
+      {needsPermission && needsPermission !== UNKNOWN_SITE ? (
         <Notice
           tone="accent"
           icon={KeyRound}
@@ -196,6 +204,22 @@ export function AutofillTab() {
           }
         >
           Access is limited to this site, used only when you click Scan or Fill. You can revoke it in Chrome's extension settings.
+        </Notice>
+      ) : null}
+      {needsPermission === UNKNOWN_SITE ? (
+        <Notice
+          tone="accent"
+          icon={KeyRound}
+          title="A2C needs access to this page"
+          action={
+            <Button size="sm" variant="primary" onClick={grant}>
+              Allow A2C to read forms on websites
+            </Button>
+          }
+        >
+          Chrome hides the address of this tab until you allow it. Quickest one-time option: click the A2C icon in the toolbar (or press Alt+Shift+F) while this
+          form is open, then press Scan Form again. Or allow website access below; A2C still reads a page only when you click Scan or Fill, and you can revoke it in
+          Chrome's extension settings.
         </Notice>
       ) : null}
 
