@@ -44,7 +44,7 @@ export interface Classification {
 export type MemoryPermission = 'auto' | 'ask' | 'never';
 export type MemorySensitivity = 'standard' | 'private';
 export type MemoryCategory = 'identity' | 'contact' | 'education' | 'work' | 'links' | 'skills' | 'other';
-export type ProvenanceSource = 'manual' | 'onboarding' | 'form_approved' | 'document_approved';
+export type ProvenanceSource = 'manual' | 'onboarding' | 'form_approved' | 'document_approved' | 'notes_approved' | 'chatgpt_approved';
 
 export interface MemoryFact {
   key: string;
@@ -53,6 +53,7 @@ export interface MemoryFact {
   category: MemoryCategory;
   permission: MemoryPermission;
   sensitivity: MemorySensitivity;
+  verified?: boolean;
   /** Domains where an "ask" fact may be pre-approved (site allowlist). */
   allowedSites: string[];
   provenance: {
