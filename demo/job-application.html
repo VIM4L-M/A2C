@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Acme Robotics: Software Intern Application</title>
+    <link rel="stylesheet" href="demo.css" />
+  </head>
+  <body>
+    <main>
+      <form class="card" id="apply">
+        <h1>Software Engineering Intern</h1>
+        <p class="sub">Acme Robotics (fictional). Different wording, same information.</p>
+
+        <fieldset>
+          <legend>About you</legend>
+          <div class="row">
+            <label for="a1">Applicant Name</label>
+            <input id="a1" name="applicant" type="text" />
+          </div>
+          <div class="row">
+            <label for="a2">Contact E-mail</label>
+            <input id="a2" name="contact" type="email" />
+          </div>
+          <div class="row">
+            <label for="a3">Mobile Number</label>
+            <input id="a3" name="mobile" type="tel" />
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Education</legend>
+          <div class="row">
+            <label for="b1">Educational Institution</label>
+            <input id="b1" name="inst" type="text" />
+          </div>
+          <div class="row">
+            <label for="b2">Highest Qualification</label>
+            <select id="b2" name="qual">
+              <option value="">Select...</option>
+              <option value="btech">Bachelor of Technology (B.Tech)</option>
+              <option value="be">Bachelor of Engineering (B.E.)</option>
+              <option value="bsc">B.Sc</option>
+              <option value="mtech">M.Tech</option>
+              <option value="phd">PhD</option>
+            </select>
+          </div>
+          <div class="row">
+            <label for="b3">Year of Passing</label>
+            <select id="b3" name="yop">
+              <option value="">Select year</option>
+              <option>2025</option>
+              <option>2026</option>
+              <option>2027</option>
+              <option>2028</option>
+              <option>2029</option>
+            </select>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Engineering</legend>
+          <div class="row">
+            <label for="c1">Developer Repository</label>
+            <input id="c1" name="repo_link" type="url" />
+          </div>
+          <div class="row">
+            <label for="c2">Portfolio / Personal Website</label>
+            <input id="c2" name="site" type="url" />
+          </div>
+          <div class="row">
+            <div id="langs-label" style="font-weight: 600; font-size: 14px; margin-bottom: 6px">Technologies you know</div>
+            <div class="inline" role="group" aria-labelledby="langs-label">
+              <label><input type="checkbox" name="langs" value="py" /> Python</label>
+              <label><input type="checkbox" name="langs" value="java" /> Java</label>
+              <label><input type="checkbox" name="langs" value="ts" /> TypeScript</label>
+              <label><input type="checkbox" name="langs" value="react" /> React</label>
+              <label><input type="checkbox" name="langs" value="go" /> Go</label>
+            </div>
+          </div>
+          <div class="row">
+            <div id="mode-label" style="font-weight: 600; font-size: 14px; margin-bottom: 6px">Preferred work mode</div>
+            <div class="inline" role="radiogroup" aria-labelledby="mode-label">
+              <label><input type="radio" name="mode" value="remote" /> Remote</label>
+              <label><input type="radio" name="mode" value="hybrid" /> Hybrid</label>
+              <label><input type="radio" name="mode" value="onsite" /> On-site</label>
+            </div>
+          </div>
+          <!-- Web component with an open shadow root -->
+          <profile-link></profile-link>
+          <div id="dynamic-slot"></div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Your application</legend>
+          <div class="row">
+            <label for="d1">Expected stipend (INR / month)</label>
+            <input id="d1" name="stipend" type="number" />
+          </div>
+          <div class="row">
+            <label for="d2">Cover letter: tell us what makes you a great fit</label>
+            <textarea id="d2" name="cover" maxlength="800"></textarea>
+          </div>
+          <div class="row inline">
+            <label><input type="checkbox" name="certify" /> I certify the information above is accurate</label>
+          </div>
+        </fieldset>
+        <button type="submit">Submit application</button>
+      </form>
+    </main>
+    <script>
+      class ProfileLink extends HTMLElement {
+        constructor() {
+          super();
+          const root = this.attachShadow({ mode: 'open' });
+          root.innerHTML =
+            '<div style="margin-bottom:14px"><label for="li" style="display:block;font-weight:600;font-size:14px;margin-bottom:6px">LinkedIn Profile</label>' +
+            '<input id="li" name="linkedin" type="url" style="width:100%;box-sizing:border-box;padding:9px 11px;border:1px solid #e2dcd4;border-radius:9px;font:inherit"></div>';
+        }
+      }
+      customElements.define('profile-link', ProfileLink);
+
+      // A field that appears after load, like dynamic React forms.
+      setTimeout(() => {
+        document.getElementById('dynamic-slot').innerHTML =
+          '<div class="row"><label for="e1">Major / Field of Study</label><input id="e1" name="field_of_study" type="text"></div>';
+      }, 1200);
+
+      document.getElementById('apply').addEventListener('submit', (e) => {
+        e.preventDefault();
+        alert('Submitted by the user (demo only).');
+      });
+    </script>
+  </body>
+</html>

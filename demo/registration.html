@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>HackFest 2026 Registration</title>
+    <link rel="stylesheet" href="demo.css" />
+  </head>
+  <body>
+    <main>
+      <form class="card" id="registration" novalidate>
+        <h1>HackFest 2026 Registration</h1>
+        <p class="sub">Register as a participant. Fictional demo page.</p>
+
+        <div class="row">
+          <label for="fullName">Full Name</label>
+          <input id="fullName" name="fullName" type="text" required />
+        </div>
+        <div class="row">
+          <label for="collegeName">College Name</label>
+          <input id="collegeName" name="college_name" type="text" required />
+        </div>
+        <div class="row">
+          <label for="email">Email Address</label>
+          <input id="email" name="email" type="email" required />
+        </div>
+        <div class="row">
+          <label for="gh">GitHub Profile</label>
+          <input id="gh" name="github" type="url" placeholder="https://github.com/..." />
+        </div>
+        <div class="row">
+          <label for="skills">Skills</label>
+          <input id="skills" name="skills" type="text" placeholder="e.g. Python, Figma" />
+        </div>
+        <div class="row">
+          <label for="gradYear">Expected Graduation Year</label>
+          <input id="gradYear" name="grad_year" type="text" inputmode="numeric" />
+        </div>
+        <div class="row">
+          <label for="team">Team Name</label>
+          <input id="team" name="team" type="text" />
+          <div class="hint">Not a personal fact: ContextFill should leave this for you.</div>
+        </div>
+        <div class="row">
+          <label for="why">Why do you want to join HackFest? (max 500 characters)</label>
+          <textarea id="why" name="motivation" maxlength="500"></textarea>
+        </div>
+        <div class="row inline">
+          <label><input type="checkbox" name="coc" required /> I agree to the Code of Conduct</label>
+        </div>
+        <button type="submit">Submit registration</button>
+      </form>
+
+      <div class="card">
+        <strong>Live form state (what a framework-driven site sees)</strong>
+        <p class="hint">Updates only from real input/change events, like a React controlled form.</p>
+        <div class="state" id="state">{}</div>
+        <p class="hint" id="submitted"></p>
+      </div>
+    </main>
+    <script>
+      // Minimal "controlled form": state changes only through input/change events.
+      const form = document.getElementById('registration');
+      const state = {};
+      const render = () => (document.getElementById('state').textContent = JSON.stringify(state, null, 2));
+      form.addEventListener('input', (e) => {
+        const t = e.target;
+        state[t.name] = t.type === 'checkbox' ? t.checked : t.value;
+        render();
+      });
+      form.addEventListener('change', (e) => {
+        const t = e.target;
+        state[t.name] = t.type === 'checkbox' ? t.checked : t.value;
+        render();
+      });
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        document.getElementById('submitted').textContent = 'Submitted by the user at ' + new Date().toLocaleTimeString() + ' (demo only, nothing sent).';
+      });
+    </script>
+  </body>
+</html>
