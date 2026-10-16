@@ -6,7 +6,7 @@ import { useApp } from '../hooks/useApp';
 import { DEMO_PROFILE } from '../memory/facts';
 import { checkPassphrase } from '../memory/vault';
 
-const STARTER_KEYS = ['full_name', 'email', 'phone', 'college', 'degree', 'major', 'graduation_year', 'skills', 'github_url', 'portfolio_url', 'linkedin_url', 'current_role', 'work_experience'];
+const STARTER_KEYS = ['full_name', 'email', 'phone', 'college', 'degree', 'major', 'graduation_year', 'skills', 'github_url', 'portfolio_url', 'linkedin_url', 'current_role', 'work_experience', 'country'];
 
 export function Onboarding() {
   const { checkFact, commitFact, updateSettings, createVault, vaultState } = useApp();

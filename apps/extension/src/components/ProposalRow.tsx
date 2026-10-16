@@ -20,7 +20,7 @@ export interface ProposalRowProps {
   onLocate?: () => void;
 }
 
-const SOURCE_LABEL = { gemma: 'Gemma 4', specialist: 'Specialist', mock: 'Mock', rules: 'Rules fallback', user: 'You' } as const;
+const SOURCE_LABEL = { gemma: 'Gemma 4', specialist: 'Specialist', mock: 'Mock', rules: 'Instant rules', user: 'You' } as const;
 
 function ValueEditor({ p, onChange, id }: { p: Proposal; onChange: (v: string | string[]) => void; id: string }) {
   const { field } = p;
