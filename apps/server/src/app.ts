@@ -1,19 +1,31 @@
 import express, { type NextFunction, type Request, type Response } from 'express';
-import type { ProxyConfig } from './config';
-import type { GemmaClient } from './gemmaClient';
-import { aiRouter } from './routes/ai';
+import { authenticate } from './auth';
+import { createBackboardClient, type BackboardClient } from './backboardClient';
+import { specialistTarget, type ProxyConfig } from './config';
+import { createChatClient, type GemmaClient } from './gemmaClient';
+import { aiRouter, publicRouter } from './routes/ai';
+import { memoryRouter } from './routes/memory';
 import { corsGuard, hostGuard, rateLimit, securityHeaders } from './security';
 
-export function createApp(config: ProxyConfig, client: GemmaClient) {
+export interface AppDeps {
+  specialist?: GemmaClient;
+  backboard?: BackboardClient;
+}
+
+export function createApp(config: ProxyConfig, gemma: GemmaClient, deps: AppDeps = {}) {
+  const specialist = deps.specialist ?? createChatClient(specialistTarget(config));
+  const backboard = deps.backboard ?? createBackboardClient({ apiKey: config.backboardApiKey, baseUrl: config.backboardBaseUrl });
+
   const app = express();
   app.disable('x-powered-by');
+  app.set('trust proxy', config.production ? 1 : false);
   app.use(securityHeaders);
   app.use(hostGuard(config));
   app.use(corsGuard(config));
-  app.use(rateLimit(config.rateLimitPerMinute));
+  app.use(rateLimit(config.rateLimitPerMinute * 2));
   app.use(express.json({ limit: '64kb', strict: true }));
 
-  // Metadata-only request log: never bodies, labels or values.
+  // Metadata-only request log: never bodies, labels, values or tokens.
   app.use((req, res, next) => {
     const start = Date.now();
     res.on('finish', () => {
@@ -22,7 +34,11 @@ export function createApp(config: ProxyConfig, client: GemmaClient) {
     next();
   });
 
-  app.use('/api', aiRouter(config, client));
+  app.use('/api', publicRouter(config));
+  // Everything below requires an authenticated user (or local single-user mode).
+  app.use('/api', authenticate(config), rateLimit(config.rateLimitPerMinute, (_req, res) => `user:${res.locals.userId as string}`));
+  app.use('/api', aiRouter(config, gemma, specialist, backboard));
+  app.use('/api/memory', memoryRouter(backboard));
 
   app.use((_req, res) => {
     res.status(404).json({ error: 'not_found' });

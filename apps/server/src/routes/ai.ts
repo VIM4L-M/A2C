@@ -1,14 +1,18 @@
 import {
   buildDraftMessages,
   buildMappingMessages,
+  buildSpecialistPrompt,
   detectSecretValue,
   DraftRequestSchema,
   DraftResponseSchema,
   extractJsonObject,
   FieldMappingRequestSchema,
   FieldMappingResponseSchema,
+  parseSpecialistOutput,
+  specialistMapping,
 } from '@a2c/shared';
 import { Router, type Response } from 'express';
+import type { BackboardClient } from '../backboardClient';
 import { isConfigured, type ProxyConfig } from '../config';
 import { GemmaError, type GemmaClient } from '../gemmaClient';
 
@@ -21,20 +25,44 @@ function sendGemmaError(res: Response, err: unknown) {
   res.status(500).json({ error: 'internal_error' });
 }
 
-export function aiRouter(config: ProxyConfig, client: GemmaClient): Router {
+/** Unauthenticated: liveness only (used by Render health checks). */
+export function publicRouter(config: ProxyConfig): Router {
   const router = Router();
-
-  router.get('/health', async (req, res) => {
-    const probe = req.query.probe === '1';
-    const upstream = probe ? await client.listModels() : undefined;
+  router.get('/health', (_req, res) => {
     res.json({
       ok: true,
-      service: 'a2c-gemma-proxy',
+      service: 'a2c-backend',
       provider: 'gemma',
       configured: isConfigured(config),
       model: config.gemmaModel,
-      upstreamHost: config.gemmaBaseUrl ? new URL(config.gemmaBaseUrl).host : null,
-      upstream: upstream ?? null,
+      authRequired: config.users.length > 0,
+    });
+  });
+  return router;
+}
+
+const MAX_SPECIALIST_FIELDS = 60;
+
+export function aiRouter(config: ProxyConfig, gemma: GemmaClient, specialist: GemmaClient, backboard: BackboardClient): Router {
+  const router = Router();
+
+  // Connection status shown in the extension's Settings tab. probe=1 performs real checks.
+  router.get('/status', async (req, res) => {
+    const probe = req.query.probe === '1';
+    const [gemmaUp, specialistUp, backboardUp] = probe
+      ? await Promise.all([
+          gemma.configured ? gemma.listModels() : Promise.resolve(null),
+          specialist.configured ? specialist.listModels() : Promise.resolve(null),
+          backboard.configured ? backboard.ping() : Promise.resolve(null),
+        ])
+      : [null, null, null];
+    res.json({
+      ok: true,
+      user: res.locals.userId,
+      authRequired: config.users.length > 0,
+      gemma: { configured: gemma.configured, model: gemma.model, reachable: gemmaUp ? gemmaUp.reachable : null, models: gemmaUp?.models ?? [] },
+      specialist: { configured: specialist.configured, model: specialist.model, reachable: specialistUp ? specialistUp.reachable : null },
+      backboard: { configured: backboard.configured, reachable: backboardUp },
     });
   });
 
@@ -45,16 +73,28 @@ export function aiRouter(config: ProxyConfig, client: GemmaClient): Router {
       return;
     }
     const request = parsed.data;
+    const fieldIds = new Set(request.fields.map((f) => f.id));
+    const keys = new Set(request.availableMemoryKeys.map((k) => k.key));
     try {
-      const text = await (client.chat(buildMappingMessages(request)));
+      if (req.query.engine === 'specialist') {
+        // Optional fine-tuned specialist: one short label per field, same policy downstream.
+        const fields = request.fields.slice(0, MAX_SPECIALIST_FIELDS);
+        const mappings = await Promise.all(
+          fields.map(async (f) => {
+            const text = await specialist.chat([{ role: 'user', content: buildSpecialistPrompt({ label: f.label, type: f.type, options: f.options }) }], { maxTokens: 12 });
+            return specialistMapping(f, parseSpecialistOutput(text, keys));
+          }),
+        );
+        res.json({ mappings });
+        return;
+      }
+      const text = await gemma.chat(buildMappingMessages(request));
       const out = FieldMappingResponseSchema.safeParse(extractJsonObject(text));
       if (!out.success) {
         res.status(502).json({ error: 'invalid_model_output', message: 'Gemma output did not match the mapping schema' });
         return;
       }
       // Server-side filtering (the extension validates again).
-      const fieldIds = new Set(request.fields.map((f) => f.id));
-      const keys = new Set(request.availableMemoryKeys.map((k) => k.key));
       const mappings = out.data.mappings
         .filter((m) => fieldIds.has(m.fieldId))
         .map((m) =>
@@ -75,7 +115,7 @@ export function aiRouter(config: ProxyConfig, client: GemmaClient): Router {
       return;
     }
     try {
-      const text = await client.chat(buildDraftMessages(parsed.data));
+      const text = await gemma.chat(buildDraftMessages(parsed.data));
       const out = DraftResponseSchema.safeParse(extractJsonObject(text));
       if (!out.success) {
         res.status(502).json({ error: 'invalid_model_output', message: 'Gemma output did not match the draft schema' });

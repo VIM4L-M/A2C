@@ -1,13 +1,13 @@
 import type { NextFunction, Request, Response } from 'express';
-import type { ProxyConfig } from './config';
+import { isLoopback, type ProxyConfig } from './config';
 
 /**
- * Request hardening for the local proxy:
- *  - Host header must be loopback (mitigates DNS rebinding).
- *  - Origin must be the configured extension (web pages cannot use the proxy).
+ * Request hardening:
+ *  - Local mode: Host header must be loopback (mitigates DNS rebinding).
+ *  - Origin must be the configured extension (web pages cannot call the API).
  *  - JSON content type only (forces a CORS preflight from browsers).
- *  - Simple fixed-window rate limit.
- * Non-browser local processes can still forge headers; see SECURITY.md.
+ *  - Fixed-window rate limits (per IP before auth, per user after auth).
+ * Authentication itself lives in auth.ts.
  */
 
 const EXTENSION_ORIGIN_RE = /^chrome-extension:\/\/[a-p]{32}$/;
@@ -21,6 +21,11 @@ export function isOriginAllowed(origin: string | undefined, config: ProxyConfig)
 export function hostGuard(config: ProxyConfig) {
   const allowed = new Set([`127.0.0.1:${config.port}`, `localhost:${config.port}`, `[::1]:${config.port}`]);
   return (req: Request, res: Response, next: NextFunction) => {
+    // Public deployments sit behind their own hostname; the check applies to local mode only.
+    if (!isLoopback(config.host)) {
+      next();
+      return;
+    }
     if (!allowed.has(String(req.headers.host ?? '').toLowerCase())) {
       res.status(421).json({ error: 'invalid_host' });
       return;
@@ -36,15 +41,15 @@ export function corsGuard(config: ProxyConfig) {
     if (allowed && origin) {
       res.setHeader('Access-Control-Allow-Origin', origin);
       res.setHeader('Vary', 'Origin');
-      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
       res.setHeader('Access-Control-Max-Age', '600');
     }
     if (req.method === 'OPTIONS') {
       res.status(allowed ? 204 : 403).end();
       return;
     }
-    // Health is readable without an Origin (e.g. curl) but never by web pages.
+    // Health is readable without an Origin (curl, Render health checks) but never by web pages.
     if (req.path === '/api/health' && req.method === 'GET' && (!origin || allowed)) {
       next();
       return;
@@ -61,17 +66,16 @@ export function corsGuard(config: ProxyConfig) {
   };
 }
 
-export function rateLimit(perMinute: number) {
-  let windowStart = Date.now();
-  let count = 0;
-  return (_req: Request, res: Response, next: NextFunction) => {
+export function rateLimit(perMinute: number, keyOf: (req: Request, res: Response) => string = (req) => req.ip ?? 'unknown') {
+  const windows = new Map<string, { start: number; count: number }>();
+  return (req: Request, res: Response, next: NextFunction) => {
     const now = Date.now();
-    if (now - windowStart > 60_000) {
-      windowStart = now;
-      count = 0;
-    }
-    count += 1;
-    if (count > perMinute) {
+    const key = keyOf(req, res);
+    const w = windows.get(key);
+    if (!w || now - w.start > 60_000) {
+      if (windows.size > 10_000) windows.clear();
+      windows.set(key, { start: now, count: 1 });
+    } else if (++w.count > perMinute) {
       res.status(429).json({ error: 'rate_limited' });
       return;
     }

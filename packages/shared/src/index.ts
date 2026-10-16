@@ -8,3 +8,4 @@ export * from './mapping/semanticMatcher';
 export * from './mapping/policy';
 export * from './ai/prompt';
 export * from './ai/mockDraft';
+export * from './ai/specialist';

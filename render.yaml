@@ -1,0 +1,38 @@
+# Render Blueprint for the A2C backend (Express orchestration server).
+# Render hosts the API only. Gemma 4 runs on the inference provider configured
+# via GEMMA_BASE_URL (Render does not host the model).
+services:
+  - type: web
+    name: a2c-backend
+    runtime: node
+    plan: free
+    buildCommand: npm ci --include=dev && npm run typecheck:server
+    startCommand: npm run start:server
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: 22.16.0
+      # Required in production: the server refuses to start without these.
+      - key: A2C_USERS
+        sync: false
+      - key: ALLOWED_EXTENSION_ORIGIN
+        sync: false
+      # Gemma 4 inference endpoint (OpenAI-compatible) reachable from Render.
+      - key: GEMMA_BASE_URL
+        sync: false
+      - key: GEMMA_MODEL
+        sync: false
+      - key: GEMMA_API_KEY
+        sync: false
+      # Optional: Backboard cloud memory.
+      - key: BACKBOARD_API_KEY
+        sync: false
+      # Optional: fine-tuned mapping specialist served via an OpenAI-compatible endpoint.
+      - key: SPECIALIST_BASE_URL
+        sync: false
+      - key: SPECIALIST_MODEL
+        sync: false
+      - key: SPECIALIST_API_KEY
+        sync: false

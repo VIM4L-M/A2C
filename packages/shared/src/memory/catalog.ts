@@ -225,6 +225,16 @@ export const MEMORY_CATALOG: CatalogEntry[] = [
     synonyms: ['years of experience', 'experience years', 'total experience', 'work experience years', 'experience'],
   },
   {
+    key: 'work_experience',
+    label: 'Work experience',
+    description: 'Short summary of work or internship experience written by the person (used for drafts)',
+    category: 'work',
+    sensitivity: 'standard',
+    defaultPermission: 'ask',
+    synonyms: ['work experience', 'employment history', 'professional experience', 'internship experience', 'previous experience'],
+    preferredKinds: ['textarea'],
+  },
+  {
     key: 'bio',
     label: 'Short bio',
     description: 'Short professional summary written by the person (used only for drafts)',

@@ -75,6 +75,6 @@ export type FillStatus =
   | 'completed'
   | 'failed';
 
-export type MappingSource = 'gemma' | 'mock' | 'rules' | 'user';
+export type MappingSource = 'gemma' | 'specialist' | 'mock' | 'rules' | 'user';
 
 export type AIMode = 'gemma' | 'mock';
