@@ -27,7 +27,13 @@ Sponsor tech: **Gemma 4** (primary AI), **Backboard.io** (opt-in cloud memory), 
 | **Tinker** dataset, SFT script, evaluation, comparison | ⚙️ Scripts + tests run; baseline and Gemma evaluated | **No fine-tuning run yet** (no `TINKER_API_KEY`) |
 | DOCX `{{placeholders}}` and fillable PDF (AcroForm) | ✅ Working | Tests on demo files + Chromium run |
 
-Not supported: iframes, closed shadow roots, div-based custom widgets, multi-select lists, scanned or encrypted PDFs, PDF checkboxes and signatures, blank lines in Word documents.
+Not supported: iframes, closed shadow roots, custom listbox widgets, multi-select lists, scanned or encrypted PDFs, PDF checkboxes and signatures, blank lines in Word documents. ARIA radio and checkbox groups, including Google Forms, are supported.
+
+### Specification review (16 October 2026)
+
+The [completion review](docs/completion-review.md) maps the supplied A2C specification to implementation and verification. New flows include one-screen onboarding, reviewed notes/text-resume/ChatGPT imports, category controls, exact-origin website permissions and explicit saving of corrected page answers. Resume PDF parsing remains deferred; use plain UTF-8 text.
+
+The supplied Google Form was tested first through a browser test bridge, then using the **actual unpacked extension and live local Gemma**: **12 detected, 12 filled, zero failures, no submission**. Two Google Forms checkbox/radio bugs were fixed. The installed run used real Chrome storage, scripting and messaging; its extension UI ran at the extension URL in a tab, with website permission granted through browser automation. Native toolbar/permission-dialog UI coverage remains unverified. Full methods and limitations are in the completion review.
 
 ---
 
@@ -84,7 +90,7 @@ npm run start:server      # backend at http://127.0.0.1:8787
 1. Open `chrome://extensions` and turn on **Developer mode**.
 2. Click **Load unpacked** and choose `apps/extension/dist`.
 3. Click the A2C icon (or press `Alt+Shift+F`) to open the side panel.
-4. Complete onboarding (**Use demo profile** fills fictional data).
+4. Complete the short onboarding screen (preferred name, email and profile type are optional). Add further facts in Memory; use fictional values when testing.
 5. The first scan on a site asks **Allow on <site>**. Access applies to that one site only.
 
 ### Connect Gemma 4
@@ -146,7 +152,7 @@ Tinker's catalog has no Gemma model, so the specialist fine-tunes `Qwen/Qwen3.5-
 
 | Suite | Result |
 | --- | --- |
-| `npm test` (Vitest) | **152 / 152 passed** (11 files) |
+| `npm test` (Vitest) | **165 / 165 passed** (12 files) |
 | `npm run test:training` (Python unittest) | **8 / 8 passed** |
 | `npm run typecheck` | Clean |
 | `npm run build` | Clean |

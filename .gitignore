@@ -6,6 +6,7 @@ dist/
 *.log
 coverage/
 .code-review-graph/
+.playwright-mcp/
 .DS_Store
 __pycache__/
 *.pyc

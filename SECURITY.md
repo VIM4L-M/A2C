@@ -92,7 +92,8 @@ Nearby text can only make a field stricter. For red fields the content script do
 
 ### Memory
 
-- Nothing is learned automatically. Facts are written only after an explicit "Save to Memory" click, with extra confirmation for sensitive facts.
+- Nothing is learned automatically. Facts are written only after explicit save consent, with confirmation for sensitive facts. Notes, plain-text resumes and ChatGPT paste imports are parsed locally and candidates are individually confirmed. Page learning reads only one explicitly selected answer, rechecking its scan, origin, identity and risk before reading; a separate save action is required.
+- Category disables and saved website denials override fill approvals. Website rules identify an exact HTTP(S) origin and category. Permissions to fill do not authorize saving, sharing or submitting. Legacy hostname-only grants no longer auto-approve facts.
 - Before saving, the key/label is classified (red keys are refused) and the value is checked for secrets: Luhn-valid card numbers, private keys, JWTs, AWS/GitHub/GitLab/Slack/Google/Hugging Face/OpenAI-style keys, random high-entropy tokens and short numeric codes in a code-like context.
 - Provenance (manual, onboarding, form domain, document) and timestamps are recorded for every fact.
 
