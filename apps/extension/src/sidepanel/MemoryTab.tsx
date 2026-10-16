@@ -1,4 +1,4 @@
-import { catalogEntry, MEMORY_CATALOG, MEMORY_KEY_RE, slugifyKey, type MemoryCategory, type MemoryFact, type MemoryPermission } from '@contextfill/shared';
+import { catalogEntry, MEMORY_CATALOG, MEMORY_KEY_RE, slugifyKey, type MemoryCategory, type MemoryFact, type MemoryPermission } from '@a2c/shared';
 import { Brain, Eye, EyeOff, Lock, Pencil, Plus, Save, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
 import { Badge, Button, Card, EmptyState, FieldLabel, Notice, SectionTitle, SelectInput, TextArea, TextInput } from '../components/ui';

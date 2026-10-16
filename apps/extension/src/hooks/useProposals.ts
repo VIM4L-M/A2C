@@ -11,7 +11,7 @@ import {
   type MemoryFact,
   type Proposal,
   type ScanResult,
-} from '@contextfill/shared';
+} from '@a2c/shared';
 import { useCallback, useRef, useState } from 'react';
 import { mapWithFallback, type AIProvider } from '../services/ai';
 

@@ -1,4 +1,4 @@
-import { buildMappingRequest, buildProposals, deterministicMap } from '@contextfill/shared';
+import { buildMappingRequest, buildProposals, deterministicMap } from '@a2c/shared';
 import { describe, expect, it } from 'vitest';
 import { memoryKV, STORAGE_KEYS } from '../apps/extension/src/lib/storage';
 import { prepareFact } from '../apps/extension/src/memory/facts';

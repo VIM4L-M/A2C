@@ -11,7 +11,7 @@ import { z } from 'zod';
  */
 
 export const VAULT_ITERATIONS = 600_000;
-const AAD = new TextEncoder().encode('contextfill-vault-v1');
+const AAD = new TextEncoder().encode('a2c-vault-v1');
 
 export const VaultRecordSchema = z.object({
   v: z.literal(1),

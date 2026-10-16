@@ -1,4 +1,4 @@
-import type { FillStatus } from '@contextfill/shared';
+import type { FillStatus } from '@a2c/shared';
 import { AlertTriangle, CheckCircle2, CircleDashed, HelpCircle, Info, Loader2, Lock, ShieldAlert, XCircle, type LucideIcon } from 'lucide-react';
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from 'react';
 

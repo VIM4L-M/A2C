@@ -1,8 +1,8 @@
-# ContextFill AI
+# A2C
 
 **Your context. Any form. One click.**
 
-ContextFill AI is a privacy-first Chrome extension that fills unfamiliar web forms and document templates from a personal memory you approve. Gemma 4 understands what each field is asking and maps it to the right memory attribute; your values are resolved on your device, every sensitive field needs your approval, and credentials are never touched. You always review and submit yourself.
+A2C is a privacy-first Chrome extension that fills unfamiliar web forms and document templates from a personal memory you approve. Gemma 4 understands what each field is asking and maps it to the right memory attribute; your values are resolved on your device, every sensitive field needs your approval, and credentials are never touched. You always review and submit yourself.
 
 It is not an autonomous browser agent. It never submits, pays, logs in, clicks buttons or agrees to anything.
 
@@ -34,7 +34,7 @@ Not supported (by design or not yet): iframes, closed shadow roots, contentedita
 ## Architecture
 
 ```
-contextfill-ai/
+a2c/
   apps/
     extension/            Chrome MV3 extension (TypeScript, React 19, Vite 8, Tailwind 4)
       public/manifest.json
@@ -97,7 +97,7 @@ npm run demo           # demo forms at http://localhost:5174
 1. Open `chrome://extensions`.
 2. Turn on **Developer mode** (top right).
 3. Click **Load unpacked** and select `apps/extension/dist`.
-4. Pin ContextFill AI and click its icon (or press `Alt+Shift+F`). The side panel opens.
+4. Pin A2C and click its icon (or press `Alt+Shift+F`). The side panel opens.
 5. Complete onboarding (or click **Use demo profile** for fictional sample data).
 
 The first time you scan a site, Chrome may need your permission for that site: click **Allow on <site>** in the side panel. Access is limited to that one site.
@@ -170,7 +170,7 @@ The prompt template (`packages/shared/src/ai/prompt.ts`) wraps page text in `<un
 
 ## 60-second judges' demo
 
-1. **(0-15 s) Scene 1.** Open `registration.html`, open ContextFill, click **Scan Form**. Point at the counts: ready, approval, blocked. "Gemma 4 mapped these from my memory; values never left my laptop." Tick Email (amber), click **Fill approved fields**. The Live form state updates.
+1. **(0-15 s) Scene 1.** Open `registration.html`, open A2C, click **Scan Form**. Point at the counts: ready, approval, blocked. "Gemma 4 mapped these from my memory; values never left my laptop." Tick Email (amber), click **Fill approved fields**. The Live form state updates.
 2. **(15-30 s) Scene 3.** "Expected Graduation Year" shows *Missing information*. Type 2028, click **Save to memory**. Fill.
 3. **(30-45 s) Scene 2.** Open `job-application.html`, **Scan Form**. "Developer Repository" -> GitHub, "Educational Institution" -> college, "Year of Passing" picks 2028 from the dropdown: the fact saved a moment ago. Fill. The cover letter offers **Draft with Gemma 4** with a per-fact consent list.
 4. **(45-60 s) Scene 4.** Open `adversarial-form.html`, **Scan Form**. Nine fields are **Blocked**: password, passcode, OTP, card, CVV, expiry, API key, recovery code, and the label that tries to inject instructions. "These are never read, stored or sent to Gemma. My browser's password manager stays in charge." Fill: only name and GitHub change.

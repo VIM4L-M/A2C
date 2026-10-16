@@ -1,11 +1,11 @@
 # Security and privacy model
 
-ContextFill AI fills web forms and document templates from a personal memory the user controls. This document describes what it protects, how, and where the protections stop. It is a hackathon MVP and has not had an independent security review.
+A2C fills web forms and document templates from a personal memory the user controls. This document describes what it protects, how, and where the protections stop. It is a hackathon MVP and has not had an independent security review.
 
 ## Assets
 
 1. The user's memory: standard facts (name, college, links, ...) and private facts (phone, city, birth date, grades, ...).
-2. Credentials and payment data on web pages (passwords, OTPs, card data, API keys). ContextFill must never read, store, transmit or fill these.
+2. Credentials and payment data on web pages (passwords, OTPs, card data, API keys). A2C must never read, store, transmit or fill these.
 3. The Gemma endpoint and its API key, which live on the local proxy.
 4. The integrity of what gets written into a page or document.
 

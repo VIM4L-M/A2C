@@ -1,4 +1,4 @@
-import { buildMappingRequest, buildProposals, deterministicMap, matchOption, MAPPING_SYSTEM_PROMPT, buildMappingMessages, type MemoryFact, type ScannedField } from '@contextfill/shared';
+import { buildMappingRequest, buildProposals, deterministicMap, matchOption, MAPPING_SYSTEM_PROMPT, buildMappingMessages, type MemoryFact, type ScannedField } from '@a2c/shared';
 import { describe, expect, it } from 'vitest';
 import { DEMO_FACTS, fact, field, scanOf } from './helpers';
 

@@ -1,4 +1,4 @@
-import { summarize, type ScanResult } from '@contextfill/shared';
+import { summarize, type ScanResult } from '@a2c/shared';
 import { Globe, KeyRound, RefreshCw, ScanLine, ShieldCheck, Wand2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { ProposalList } from '../components/ProposalList';
@@ -79,7 +79,7 @@ export function AutofillTab() {
     // Called directly from the click handler (user gesture). Grants this one site.
     const ok = await requestSitePermission(needsPermission);
     if (ok) await doScan();
-    else setError('Permission was not granted. ContextFill cannot read this page.');
+    else setError('Permission was not granted. A2C cannot read this page.');
   };
 
   const doFill = async () => {
@@ -156,7 +156,7 @@ export function AutofillTab() {
         <Notice
           tone="accent"
           icon={KeyRound}
-          title="Allow ContextFill on this site?"
+          title="Allow A2C on this site?"
           action={
             <Button size="sm" variant="primary" onClick={grant}>
               Allow on {new URL(needsPermission).host}
@@ -205,7 +205,7 @@ export function AutofillTab() {
 
       {fillSummary ? (
         <Notice tone={fillSummary.failed ? 'warn' : 'ok'} title={`Filled ${fillSummary.filled} field${fillSummary.filled === 1 ? '' : 's'}`}>
-          {fillSummary.skipped} skipped, {fillSummary.failed} failed. Review the page and submit it yourself. ContextFill never submits forms.
+          {fillSummary.skipped} skipped, {fillSummary.failed} failed. Review the page and submit it yourself. A2C never submits forms.
         </Notice>
       ) : null}
 

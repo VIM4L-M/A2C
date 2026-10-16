@@ -17,7 +17,7 @@ if (!isLoopback(config.host)) {
 }
 
 app.listen(config.port, config.host, () => {
-  console.log(`ContextFill Gemma proxy listening on http://${config.host}:${config.port}`);
+  console.log(`A2C Gemma proxy listening on http://${config.host}:${config.port}`);
   if (isConfigured(config)) {
     console.log(`Gemma model: ${config.gemmaModel} via ${new URL(config.gemmaBaseUrl!).host}`);
   } else {

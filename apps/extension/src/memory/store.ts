@@ -1,4 +1,4 @@
-import type { MemoryFact } from '@contextfill/shared';
+import type { MemoryFact } from '@a2c/shared';
 import { STORAGE_KEYS, type KV } from '../lib/storage';
 import { FactListSchema } from './facts';
 import { createVault, seal, unlockVault, VaultError, VaultRecordSchema, type VaultRecord } from './vault';

@@ -1,4 +1,4 @@
-import { detectSecretValue, type MemoryFact, type Proposal } from '@contextfill/shared';
+import { detectSecretValue, type MemoryFact, type Proposal } from '@a2c/shared';
 import { useApp } from '../hooks/useApp';
 import { resolveForField } from '../hooks/useProposals';
 import { ProposalRow, type SaveCheck } from './ProposalRow';

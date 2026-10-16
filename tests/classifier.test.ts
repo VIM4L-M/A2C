@@ -1,4 +1,4 @@
-import { classifyField, classifyMemoryKey, detectSecretValue, hasInjectionPattern, luhnValid } from '@contextfill/shared';
+import { classifyField, classifyMemoryKey, detectSecretValue, hasInjectionPattern, luhnValid } from '@a2c/shared';
 import { describe, expect, it } from 'vitest';
 
 const text = (label: string, extra: Record<string, unknown> = {}) => classifyField({ kind: 'text', inputType: 'text', label, ...extra });

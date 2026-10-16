@@ -1,4 +1,4 @@
-import { detectSecretValue, type FillInstruction, type FillResult } from '@contextfill/shared';
+import { detectSecretValue, type FillInstruction, type FillResult } from '@a2c/shared';
 import { hasValue, isEditable, isVisible, type Control } from './dom';
 import { describe, type RegistryEntry, type ScanState } from './scanner';
 

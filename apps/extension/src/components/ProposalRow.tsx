@@ -1,4 +1,4 @@
-import { catalogEntry, validateFormat, type MemoryFact, type Proposal } from '@contextfill/shared';
+import { catalogEntry, validateFormat, type MemoryFact, type Proposal } from '@a2c/shared';
 import { Bookmark, Lock, PenLine, Sparkles } from 'lucide-react';
 import { useId, useState } from 'react';
 import { Badge, Button, Checkbox, cx, SelectInput, StatusPill, TextArea, TextInput } from './ui';

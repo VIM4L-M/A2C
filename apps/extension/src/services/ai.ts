@@ -10,7 +10,7 @@ import {
   type FieldMappingRequest,
   type FieldMappingResponse,
   type MappingSource,
-} from '@contextfill/shared';
+} from '@a2c/shared';
 import { z } from 'zod';
 import { isLocalProxyUrl } from '../lib/settings';
 

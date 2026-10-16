@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "ContextFill AI",
-  "short_name": "ContextFill",
+  "name": "A2C",
+  "short_name": "A2C",
   "version": "0.1.0",
   "description": "Your context. Any form. One click. Privacy-first, user-controlled form autofill powered by Gemma 4.",
   "minimum_chrome_version": "116",
@@ -12,7 +12,7 @@
     "128": "icons/icon128.png"
   },
   "action": {
-    "default_title": "Open ContextFill AI",
+    "default_title": "Open A2C",
     "default_icon": {
       "16": "icons/icon16.png",
       "32": "icons/icon32.png"
@@ -30,7 +30,7 @@
   "commands": {
     "_execute_action": {
       "suggested_key": { "default": "Alt+Shift+F" },
-      "description": "Open ContextFill AI"
+      "description": "Open A2C"
     }
   },
   "content_security_policy": {

@@ -1,4 +1,4 @@
-import { ContentRequestSchema, type FillResponse } from '@contextfill/shared';
+import { ContentRequestSchema, type FillResponse } from '@a2c/shared';
 import { fillApprovedFields } from './filler';
 import { scanDocument, type ScanState } from './scanner';
 
@@ -8,7 +8,7 @@ import { scanDocument, type ScanState } from './scanner';
  */
 
 const VERSION = '0.1.0';
-type Flagged = typeof globalThis & { __contextfillAlive?: () => boolean };
+type Flagged = typeof globalThis & { __a2cAlive?: () => boolean };
 const g = globalThis as Flagged;
 
 function alive(): boolean {
@@ -19,8 +19,8 @@ function alive(): boolean {
   }
 }
 
-if (!(g.__contextfillAlive && g.__contextfillAlive())) {
-  g.__contextfillAlive = alive;
+if (!(g.__a2cAlive && g.__a2cAlive())) {
+  g.__a2cAlive = alive;
   let state: ScanState | null = null;
 
   chrome.runtime.onMessage.addListener((raw, sender, sendResponse) => {

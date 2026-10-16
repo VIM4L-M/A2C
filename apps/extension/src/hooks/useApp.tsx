@@ -1,4 +1,4 @@
-import { MEMORY_CATALOG, type MemoryFact, type MemoryPermission } from '@contextfill/shared';
+import { MEMORY_CATALOG, type MemoryFact, type MemoryPermission } from '@a2c/shared';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { clearActivity as clearActivityStore, EMPTY_ACTIVITY, loadActivity, recordActivity, type Activity, type ActivityEvent } from '../lib/activity';
 import { DEFAULT_SETTINGS, loadSettings, saveSettings, type Settings } from '../lib/settings';

@@ -1,4 +1,4 @@
-import { classifyField, sanitizeLabel, type Classification, type FieldKind, type ScannedField, type ScanResult } from '@contextfill/shared';
+import { classifyField, sanitizeLabel, type Classification, type FieldKind, type ScannedField, type ScanResult } from '@a2c/shared';
 import {
   collectControls,
   hasValue,

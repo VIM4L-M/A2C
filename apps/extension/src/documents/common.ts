@@ -1,4 +1,4 @@
-import { classifyField, humanizeKey, normalizeText, sanitizeLabel, type FieldKind, type ScanResult, type ScannedField } from '@contextfill/shared';
+import { classifyField, humanizeKey, normalizeText, sanitizeLabel, type FieldKind, type ScanResult, type ScannedField } from '@a2c/shared';
 
 /**
  * Documents reuse the website pipeline: their placeholders / AcroForm fields

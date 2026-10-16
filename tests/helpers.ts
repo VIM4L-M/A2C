@@ -1,4 +1,4 @@
-import { catalogEntry, type MemoryFact, type ScannedField, type ScanResult } from '@contextfill/shared';
+import { catalogEntry, type MemoryFact, type ScannedField, type ScanResult } from '@a2c/shared';
 
 let n = 0;
 export function fid(): string {

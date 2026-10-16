@@ -1,4 +1,4 @@
-import { mergeSystemIntoUser, type ChatMessage } from '@contextfill/shared';
+import { mergeSystemIntoUser, type ChatMessage } from '@a2c/shared';
 import type { ProxyConfig } from './config';
 
 /**

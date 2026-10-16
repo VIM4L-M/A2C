@@ -1,8 +1,8 @@
 {
-  "name": "contextfill-ai",
+  "name": "a2c",
   "version": "0.1.0",
   "private": true,
-  "description": "ContextFill AI - privacy-first, user-controlled form autofill powered by Gemma 4.",
+  "description": "A2C - privacy-first, user-controlled form autofill powered by Gemma 4.",
   "workspaces": [
     "packages/shared",
     "apps/extension",

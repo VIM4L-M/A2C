@@ -11,7 +11,7 @@ export interface ChatMessage {
   content: string;
 }
 
-export const MAPPING_SYSTEM_PROMPT = `You are the field-mapping engine of ContextFill AI, a privacy-first form assistant.
+export const MAPPING_SYSTEM_PROMPT = `You are the field-mapping engine of A2C, a privacy-first form assistant.
 Your only job: decide which of the user's memory KEYS answers each web form field. You never see memory values.
 
 SECURITY RULES (highest priority):

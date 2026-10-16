@@ -17,7 +17,7 @@ function EngineCard() {
           <input type="radio" name="mode" className="mt-0.5 accent-[var(--cf-accent)]" checked={settings.aiMode === 'gemma'} onChange={() => void updateSettings({ aiMode: 'gemma' })} />
           <span>
             <span className="font-medium">Gemma 4 via local proxy</span>
-            <span className="block text-xs text-muted">Real model inference through the ContextFill proxy on this computer.</span>
+            <span className="block text-xs text-muted">Real model inference through the A2C proxy on this computer.</span>
           </span>
         </label>
         <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-line p-2.5">
@@ -227,7 +227,7 @@ export function PrivacyTab() {
   return (
     <div className="flex flex-col gap-3">
       <Notice tone="accent" icon={Shield} title="What goes to the AI">
-        Only field labels, types, option labels and the names of your memory keys. Values are resolved on your device. ContextFill never submits forms.
+        Only field labels, types, option labels and the names of your memory keys. Values are resolved on your device. A2C never submits forms.
       </Notice>
       <EngineCard />
       <VaultCard />

@@ -1,4 +1,4 @@
-import { buildMemoryKeyDescriptors, deterministicMap, matchField, type AIField } from '@contextfill/shared';
+import { buildMemoryKeyDescriptors, deterministicMap, matchField, type AIField } from '@a2c/shared';
 import { describe, expect, it } from 'vitest';
 import { DEMO_FACTS } from './helpers';
 

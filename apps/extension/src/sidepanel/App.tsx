@@ -39,9 +39,9 @@ export function App() {
       <header className="sticky top-0 z-10 border-b border-line bg-bg/95 backdrop-blur">
         <div className="flex items-center justify-between px-3 pt-3 pb-2">
           <div className="flex items-center gap-2">
-            <div className="grid size-7 place-items-center rounded-lg bg-accent text-[13px] font-bold text-accent-ink">C</div>
+            <div className="grid size-7 place-items-center rounded-lg bg-accent text-[13px] font-bold text-accent-ink">A</div>
             <div>
-              <div className="text-[14px] font-semibold leading-tight">ContextFill AI</div>
+              <div className="text-[14px] font-semibold leading-tight">A2C</div>
               <div className="text-[11px] leading-tight text-muted">Your context. Any form. One click.</div>
             </div>
           </div>

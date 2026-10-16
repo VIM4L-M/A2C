@@ -7,7 +7,7 @@ import {
   extractJsonObject,
   FieldMappingRequestSchema,
   FieldMappingResponseSchema,
-} from '@contextfill/shared';
+} from '@a2c/shared';
 import { Router, type Response } from 'express';
 import { isConfigured, type ProxyConfig } from '../config';
 import { GemmaError, type GemmaClient } from '../gemmaClient';
@@ -29,7 +29,7 @@ export function aiRouter(config: ProxyConfig, client: GemmaClient): Router {
     const upstream = probe ? await client.listModels() : undefined;
     res.json({
       ok: true,
-      service: 'contextfill-gemma-proxy',
+      service: 'a2c-gemma-proxy',
       provider: 'gemma',
       configured: isConfigured(config),
       model: config.gemmaModel,

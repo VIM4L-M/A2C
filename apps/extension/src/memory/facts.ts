@@ -9,7 +9,7 @@ import {
   type MemoryFact,
   type MemoryPermission,
   type ProvenanceSource,
-} from '@contextfill/shared';
+} from '@a2c/shared';
 import { z } from 'zod';
 
 export const MemoryFactSchema = z.object({

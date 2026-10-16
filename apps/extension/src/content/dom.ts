@@ -1,4 +1,4 @@
-import { normalizeText, sanitizeLabel, type FieldKind, type FieldSignals } from '@contextfill/shared';
+import { normalizeText, sanitizeLabel, type FieldKind, type FieldSignals } from '@a2c/shared';
 
 /**
  * DOM helpers for the content script. They read only metadata (labels, names,

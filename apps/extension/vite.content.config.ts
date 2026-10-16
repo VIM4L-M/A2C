@@ -12,7 +12,7 @@ export default defineConfig({
     lib: {
       entry: resolve(import.meta.dirname, 'src/content/index.ts'),
       formats: ['iife'],
-      name: 'ContextFillContent',
+      name: 'A2CContent',
       fileName: () => 'content.js',
     },
   },

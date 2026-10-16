@@ -6,7 +6,7 @@ import {
   type FillInstruction,
   type FillResponse,
   type ScanResult,
-} from '@contextfill/shared';
+} from '@a2c/shared';
 import { z } from 'zod';
 
 /**
@@ -88,7 +88,7 @@ export async function ensureContentScript(tabId: number): Promise<void> {
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     if (/permission|Cannot access/i.test(message)) {
-      throw new TabError('ContextFill needs your permission to read form fields on this site.', 'needs_permission');
+      throw new TabError('A2C needs your permission to read form fields on this site.', 'needs_permission');
     }
     throw new TabError(`Could not attach to the page: ${message.slice(0, 120)}`, 'inject_failed');
   }

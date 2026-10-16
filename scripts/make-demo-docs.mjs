@@ -22,7 +22,7 @@ const body = [
   p(r('Skills: ') + r('{{skills}}')),
   p(r('Account password (should be blocked): ') + r('{{password}}')),
   p(r('Signature: ') + r('{{signature}}')),
-  p(r('This document was completed locally by ContextFill AI. Review every value before signing.')),
+  p(r('This document was completed locally by A2C. Review every value before signing.')),
 ].join('');
 
 const zip = new PizZip();
@@ -47,7 +47,7 @@ const font = await pdf.embedFont(StandardFonts.Helvetica);
 const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
 const form = pdf.getForm();
 page.drawText('Internship Application (fillable demo)', { x: 50, y: 790, size: 18, font: bold, color: rgb(0.12, 0.11, 0.1) });
-page.drawText('Interactive AcroForm fields. Filled locally by ContextFill AI.', { x: 50, y: 770, size: 10, font, color: rgb(0.4, 0.38, 0.36) });
+page.drawText('Interactive AcroForm fields. Filled locally by A2C.', { x: 50, y: 770, size: 10, font, color: rgb(0.4, 0.38, 0.36) });
 
 let y = 720;
 const text = (name, label) => {

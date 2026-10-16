@@ -1,4 +1,4 @@
-import { catalogEntry, type MemoryPermission } from '@contextfill/shared';
+import { catalogEntry, type MemoryPermission } from '@a2c/shared';
 import { ArrowLeft, ArrowRight, Check, ShieldCheck, Sparkles } from 'lucide-react';
 import { useState } from 'react';
 import { Button, Card, FieldLabel, Notice, SelectInput, TextInput } from '../components/ui';
@@ -53,7 +53,7 @@ export function Onboarding() {
       {step === 0 ? (
         <Card>
           <div className="flex items-center gap-2 text-base font-semibold">
-            <Sparkles className="size-4 text-accent" aria-hidden /> Welcome to ContextFill AI
+            <Sparkles className="size-4 text-accent" aria-hidden /> Welcome to A2C
           </div>
           <p className="mt-1 text-[13px] text-muted">Your context. Any form. One click.</p>
           <ul className="mt-3 list-disc space-y-1 pl-4 text-[12.5px] text-ink/85">
@@ -72,7 +72,7 @@ export function Onboarding() {
               Use demo profile
             </Button>
           </div>
-          <p className="mb-3 text-xs text-muted">All optional. Leave anything blank: ContextFill will ask when a form needs it.</p>
+          <p className="mb-3 text-xs text-muted">All optional. Leave anything blank: A2C will ask when a form needs it.</p>
           <div className="flex flex-col gap-2.5">
             {STARTER_KEYS.map((key) => (
               <div key={key}>
@@ -120,14 +120,14 @@ export function Onboarding() {
             <li>Gemma sees field labels and memory key names, never your values.</li>
             <li>Passwords, OTPs, card and bank details, and API keys are blocked and left to your browser.</li>
             <li>Nothing is learned from websites unless you click Save to memory.</li>
-            <li>ContextFill never submits, pays, logs in or agrees to anything for you.</li>
+            <li>A2C never submits, pays, logs in or agrees to anything for you.</li>
           </ul>
         </Card>
       ) : null}
 
       {step === 4 ? (
         <Notice tone="ok" title="You are ready">
-          {entered.length} detail{entered.length === 1 ? '' : 's'} will be saved. Open a form, click the ContextFill icon and press Scan Form.
+          {entered.length} detail{entered.length === 1 ? '' : 's'} will be saved. Open a form, click the A2C icon and press Scan Form.
         </Notice>
       ) : null}
 
