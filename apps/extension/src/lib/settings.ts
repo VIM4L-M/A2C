@@ -33,11 +33,18 @@ export const SettingsSchema = z.object({
   /** Opt-in Backboard cloud memory. */
   cloudMemory: z.boolean().default(false),
   onboarded: z.boolean().default(false),
+  disabledCategories: z.array(z.enum(['identity', 'contact', 'education', 'work', 'links', 'skills', 'other'])).default([]),
+  siteRules: z.array(z.object({
+    origin: z.string().max(300).refine((v) => { try { const u = new URL(v); return /^https?:$/.test(u.protocol) && u.origin === v; } catch { return false; } }),
+    category: z.enum(['identity', 'contact', 'education', 'work', 'links', 'skills', 'other']),
+    decision: z.enum(['allow', 'deny']),
+    updatedAt: z.string(),
+  })).max(500).default([]),
 });
 
 export type Settings = z.infer<typeof SettingsSchema>;
 
-export const DEFAULT_SETTINGS: Settings = { aiMode: 'gemma', backendUrl: DEFAULT_BACKEND_URL, authToken: '', cloudMemory: false, onboarded: false };
+export const DEFAULT_SETTINGS: Settings = SettingsSchema.parse({});
 
 export async function loadSettings(kv: KV): Promise<Settings> {
   const raw = ((await kv.get(STORAGE_KEYS.settings)) ?? {}) as Record<string, unknown>;
