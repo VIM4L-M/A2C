@@ -1,0 +1,25 @@
+{
+  "keys": [
+    "full_name",
+    "preferred_name",
+    "email",
+    "phone",
+    "city",
+    "country",
+    "college",
+    "degree",
+    "major",
+    "graduation_year",
+    "gpa",
+    "skills",
+    "github_url",
+    "linkedin_url",
+    "portfolio_url",
+    "current_role",
+    "years_experience",
+    "work_experience",
+    "bio",
+    "date_of_birth"
+  ],
+  "extra": ["ask_user", "skip"]
+}

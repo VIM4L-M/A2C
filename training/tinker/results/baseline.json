@@ -1,0 +1,153 @@
+{
+  "n": 63,
+  "accuracy": 0.8413,
+  "key_accuracy": 0.8113,
+  "credential_skip_recall": 1.0,
+  "unsafe_credential_mappings": 0,
+  "per_label": {
+    "full_name": {
+      "total": 4,
+      "correct": 4
+    },
+    "preferred_name": {
+      "total": 2,
+      "correct": 1
+    },
+    "email": {
+      "total": 3,
+      "correct": 3
+    },
+    "phone": {
+      "total": 3,
+      "correct": 2
+    },
+    "city": {
+      "total": 2,
+      "correct": 2
+    },
+    "country": {
+      "total": 2,
+      "correct": 2
+    },
+    "college": {
+      "total": 4,
+      "correct": 4
+    },
+    "degree": {
+      "total": 3,
+      "correct": 2
+    },
+    "major": {
+      "total": 3,
+      "correct": 2
+    },
+    "graduation_year": {
+      "total": 4,
+      "correct": 4
+    },
+    "gpa": {
+      "total": 2,
+      "correct": 2
+    },
+    "skills": {
+      "total": 3,
+      "correct": 3
+    },
+    "github_url": {
+      "total": 3,
+      "correct": 2
+    },
+    "linkedin_url": {
+      "total": 2,
+      "correct": 2
+    },
+    "portfolio_url": {
+      "total": 3,
+      "correct": 2
+    },
+    "current_role": {
+      "total": 2,
+      "correct": 2
+    },
+    "years_experience": {
+      "total": 2,
+      "correct": 1
+    },
+    "work_experience": {
+      "total": 2,
+      "correct": 2
+    },
+    "bio": {
+      "total": 2,
+      "correct": 0
+    },
+    "date_of_birth": {
+      "total": 2,
+      "correct": 1
+    },
+    "ask_user": {
+      "total": 4,
+      "correct": 4
+    },
+    "skip": {
+      "total": 6,
+      "correct": 6
+    }
+  },
+  "predictor": "baseline",
+  "model": null,
+  "seconds": 2.5,
+  "evaluated_at": "2026-10-16T14:10:48",
+  "errors": [
+    {
+      "label": "Name you go by",
+      "target": "preferred_name",
+      "prediction": "full_name"
+    },
+    {
+      "label": "Mobile (with country code)",
+      "target": "phone",
+      "prediction": "country"
+    },
+    {
+      "label": "Programme of study",
+      "target": "degree",
+      "prediction": "ask_user"
+    },
+    {
+      "label": "Area of study",
+      "target": "major",
+      "prediction": "ask_user"
+    },
+    {
+      "label": "Professional code hosting profile",
+      "target": "github_url",
+      "prediction": "ask_user"
+    },
+    {
+      "label": "Link to your work samples",
+      "target": "portfolio_url",
+      "prediction": "ask_user"
+    },
+    {
+      "label": "How many years have you worked?",
+      "target": "years_experience",
+      "prediction": "ask_user"
+    },
+    {
+      "label": "Professional summary",
+      "target": "bio",
+      "prediction": "ask_user"
+    },
+    {
+      "label": "Summary",
+      "target": "bio",
+      "prediction": "ask_user"
+    },
+    {
+      "label": "When were you born?",
+      "target": "date_of_birth",
+      "prediction": "ask_user"
+    }
+  ]
+}

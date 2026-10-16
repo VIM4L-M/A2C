@@ -1,0 +1,2 @@
+# Official Tinker SDK (Thinking Machines Lab). Only needed for train_sft.py and --predictor tinker.
+tinker
