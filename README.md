@@ -1,4 +1,4 @@
-# A2C: AI to Completion
+# A2C: Advanced Action Critic
 
 **Your memory. Any form. Automatically completed.**
 
@@ -185,7 +185,7 @@ Source pages: [Simplify review](https://www.loopcv.pro/directory/simplify/), [Si
 
 ## 90-second demo script
 
-1. **(0–15 s) Intro.** "A2C: AI to Completion. Your memory, any form, automatically completed. Gemma 4 understands the form, your data stays on your device." Show the Settings tab: Gemma 4 connected.
+1. **(0–15 s) Intro.** "A2C: Advanced Action Critic. Your memory, any form, automatically completed. Gemma 4 understands the form, your data stays on your device." Show the Settings tab: Gemma 4 connected.
 2. **(15–35 s) Hackathon registration.** Open `registration.html`, click **Scan Form**. Point at Ready / Approval / Blocked. Tick Email (amber), click **Fill**. The site's live form state updates. Point out the completion summary.
 3. **(35–50 s) Missing info + memory.** "Expected Graduation Year" is missing. Type 2028 → **Save to memory** → explicit consent.
 4. **(50–65 s) Job application.** Open `job-application.html`, click **Scan**. "Candidate name", "Educational Institution", "Developer Repository" and "Technical competencies" map to the same facts, and "Year of Passing" picks 2028. Fill. The cover letter offers **Draft with Gemma 4** with per-fact consent.

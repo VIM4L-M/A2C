@@ -48,7 +48,7 @@ export function App() {
           <div className="flex items-center gap-2">
             <div className="font-pixel grid h-8 place-items-center border-2 border-ink bg-accent px-1.5 text-[15px] text-accent-ink shadow-[2px_2px_0_0_var(--cf-ink)]">A2C</div>
             <div>
-              <div className="font-pixel text-[15px] leading-tight">AI to Completion</div>
+              <div className="font-pixel text-[15px] leading-tight">Advanced Action Critic</div>
               <div className="text-[11px] leading-tight text-muted">Your memory. Any form. Automatically completed.</div>
             </div>
           </div>

@@ -65,7 +65,7 @@ export function Onboarding() {
           <div className="flex items-center gap-2 text-base font-semibold">
             <Sparkles className="size-4 text-accent" aria-hidden /> Welcome to A2C
           </div>
-          <p className="mt-1 text-[13px] text-muted">AI to Completion. Your memory. Any form. Automatically completed.</p>
+          <p className="mt-1 text-[13px] text-muted">Advanced Action Critic. Your memory. Any form. Automatically completed.</p>
           <ul className="mt-3 list-disc space-y-1 pl-4 text-[12.5px] text-ink/85">
             <li>Save the details you are happy to reuse.</li>
             <li>Scan a form: Gemma 4 matches fields to your memory.</li>
