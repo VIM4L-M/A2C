@@ -1,0 +1,32 @@
+{
+  "name": "contextfill-ai",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ContextFill AI - privacy-first, user-controlled form autofill powered by Gemma 4.",
+  "workspaces": [
+    "packages/shared",
+    "apps/extension",
+    "apps/server"
+  ],
+  "scripts": {
+    "build": "node scripts/make-icons.mjs && npm run build -w apps/extension",
+    "dev:server": "npm run dev -w apps/server",
+    "start:server": "npm run start -w apps/server",
+    "demo": "node scripts/serve-demo.mjs",
+    "demo:docs": "node scripts/make-demo-docs.mjs",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc -p packages/shared --noEmit && tsc -p apps/extension --noEmit && tsc -p apps/server --noEmit && tsc -p tests --noEmit",
+    "verify": "npm run typecheck && npm test && npm run build",
+    "icons": "node scripts/make-icons.mjs"
+  },
+  "engines": {
+    "node": ">=20.12"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "jsdom": "^29.1.1",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.5"
+  }
+}
