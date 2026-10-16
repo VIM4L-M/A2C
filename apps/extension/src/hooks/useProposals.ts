@@ -30,11 +30,14 @@ export interface MappingInfo {
   /** Exactly what was (or would have been) sent to the AI: labels and key names only. */
   request: FieldMappingRequest | null;
   cached: boolean;
+  /** Fields matched instantly by rules and therefore not sent to the model. */
+  ruleMatched: number;
 }
 
 /** Session-only cache: rescanning the same form does not wait for the model again. */
 const CACHE = new Map<string, MappingOutcome>();
 const CACHE_MAX = 30;
+const HYBRID_MIN_CONFIDENCE = 0.86;
 
 function cacheKey(kind: string, request: FieldMappingRequest): string {
   // Field ids are random per scan; key on what the model actually sees.
@@ -101,11 +104,20 @@ export function useProposals() {
 
   const run = useCallback(
     async (scan: ScanResult, facts: MemoryFact[], lockedKeys: Set<string>, provider: AIProvider, domain: string) => {
-      const request = buildMappingRequest(scan, facts, lockedKeys);
-      const offeredKeys = new Set(request?.availableMemoryKeys.map((k) => k.key) ?? []);
+      const fullRequest = buildMappingRequest(scan, facts, lockedKeys);
+      const offeredKeys = new Set(fullRequest?.availableMemoryKeys.map((k) => k.key) ?? []);
       let cached = false;
       let outcome: MappingOutcome;
-      if (!request) outcome = { raw: { mappings: [] }, source: provider.kind === 'mock' ? 'mock' : 'rules' };
+      // Hybrid mapping: obvious fields are matched instantly by rules; only unclear ones go to the
+      // model. On CPU this turns multi-minute scans into seconds, and sends less page data.
+      const ruleMap = fullRequest ? deterministicMap(fullRequest) : { mappings: [] };
+      const confident = new Set(
+        provider.kind === 'mock' ? [] : ruleMap.mappings.filter((m) => m.action === 'use_memory' && m.confidence >= HYBRID_MIN_CONFIDENCE).map((m) => m.fieldId),
+      );
+      const request = fullRequest && fullRequest.fields.some((f) => !confident.has(f.id)) ? { ...fullRequest, fields: fullRequest.fields.filter((f) => !confident.has(f.id)) } : null;
+      if (!fullRequest) outcome = { raw: { mappings: [] }, source: provider.kind === 'mock' ? 'mock' : 'rules' };
+      else if (provider.kind === 'mock') outcome = await mapWithFallback(provider, fullRequest);
+      else if (!request) outcome = { raw: { mappings: [] }, source: provider.kind };
       else {
         const key = cacheKey(provider.kind, request);
         const hit = CACHE.get(key) as (MappingOutcome & { request: FieldMappingRequest }) | undefined;
@@ -124,12 +136,16 @@ export function useProposals() {
           }
         }
       }
+      // Merge: rule matches for confident fields, model (or fallback) output for the rest.
+      const modelMappings = ((outcome.raw as { mappings?: Array<{ fieldId: string }> }).mappings ?? []).filter((m) => !confident.has(m.fieldId));
+      const merged = confident.size ? { mappings: [...ruleMap.mappings.filter((m) => confident.has(m.fieldId)), ...modelMappings] } : outcome.raw;
       const factMap = new Map(facts.map((f) => [f.key, f]));
-      const result = buildProposals(outcome.raw, { scan, facts: factMap, lockedKeys, offeredKeys, domain, source: outcome.source });
-      last.current = { raw: outcome.raw, scan, offeredKeys, domain, source: outcome.source };
-      setProposals(result.proposals);
-      setInfo({ source: outcome.source, error: outcome.error, issues: result.issues, aiFieldCount: request?.fields.length ?? 0, request, cached });
-      return result.proposals;
+      const result = buildProposals(merged, { scan, facts: factMap, lockedKeys, offeredKeys, domain, source: outcome.source });
+      const proposals = result.proposals.map((p) => (confident.has(p.fieldId) && p.source !== 'user' ? { ...p, source: 'rules' as const } : p));
+      last.current = { raw: merged, scan, offeredKeys, domain, source: outcome.source };
+      setProposals(proposals);
+      setInfo({ source: outcome.source, error: outcome.error, issues: result.issues, aiFieldCount: request?.fields.length ?? 0, request, cached, ruleMatched: confident.size });
+      return proposals;
     },
     [],
   );

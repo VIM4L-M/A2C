@@ -247,8 +247,8 @@ export function AutofillTab() {
 
       {info ? (
         info.source === 'gemma' || info.source === 'specialist' ? (
-          <Notice tone="ok" icon={Wand2} title={info.source === 'gemma' ? 'Mapped by Gemma 4' : 'Mapped by fine-tuned specialist'}>
-            {info.aiFieldCount} field descriptions and memory key names were sent to your A2C backend. No memory values were sent.
+          <Notice tone="ok" icon={Wand2} title={info.aiFieldCount === 0 ? 'Matched instantly by rules (no AI needed)' : info.source === 'gemma' ? 'Mapped by Gemma 4' : 'Mapped by fine-tuned specialist'}>
+            {info.aiFieldCount ? `${info.aiFieldCount} unclear field${info.aiFieldCount === 1 ? '' : 's'} sent to the model` : 'No field needed the model'}{info.ruleMatched ? `; ${info.ruleMatched} obvious field${info.ruleMatched === 1 ? '' : 's'} matched instantly by rules` : ''}. Only labels and memory key names leave your browser, never values.
           </Notice>
         ) : info.source === 'mock' ? (
           <Notice tone="warn" title="MOCK MODE">
