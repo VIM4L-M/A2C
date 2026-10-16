@@ -4,6 +4,7 @@ import { DEMO_FACTS, fact, field, scanOf } from './helpers';
 
 function run(fields: ScannedField[], raw: unknown, facts: MemoryFact[] = DEMO_FACTS, domain = 'forms.example.test') {
   const scan = scanOf(fields);
+  scan.origin = domain.includes('://') ? domain : `https://${domain}`;
   const req = buildMappingRequest(scan, facts);
   const offeredKeys = new Set(req?.availableMemoryKeys.map((k) => k.key) ?? []);
   return buildProposals(raw, { scan, facts: new Map(facts.map((f) => [f.key, f])), offeredKeys, domain, source: 'gemma' });
@@ -49,9 +50,11 @@ describe('validating model output', () => {
 
   it('site allowlist lets an amber fact pre-approve on that domain only', () => {
     const email = field({ label: 'Email', kind: 'email', risk: 'amber', rule: 'contact_email' });
-    const facts = DEMO_FACTS.map((f) => (f.key === 'email' ? { ...f, allowedSites: ['forms.example.test'] } : f));
+    const facts = DEMO_FACTS.map((f) => (f.key === 'email' ? { ...f, allowedSites: ['https://forms.example.test'] } : f));
     expect(run([email], { mappings: [use(email.id, 'email')] }, facts).proposals[0]!.status).toBe('ready');
     expect(run([email], { mappings: [use(email.id, 'email')] }, facts, 'other.example').proposals[0]!.status).toBe('review');
+    expect(run([email], { mappings: [use(email.id, 'email')] }, facts, 'http://forms.example.test').proposals[0]!.status).toBe('review');
+    expect(run([email], { mappings: [use(email.id, 'email')] }, facts, 'https://forms.example.test:8443').proposals[0]!.status).toBe('review');
   });
 
   it('rejects invalid field ids', () => {

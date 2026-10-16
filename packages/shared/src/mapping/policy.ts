@@ -89,11 +89,11 @@ export function buildMemoryKeyDescriptors(facts: MemoryFact[], lockedKeys: Set<s
   const out: MemoryKeyDescriptor[] = [];
   for (const entry of MEMORY_CATALOG) {
     const fact = byKey.get(entry.key);
-    if (fact?.permission === 'never') continue;
+    if (fact?.permission === 'never' || fact?.verified === false) continue;
     out.push({ key: entry.key, description: entry.description, hasValue: Boolean(fact?.value) || lockedKeys.has(entry.key) });
   }
   for (const fact of facts) {
-    if (catalogEntry(fact.key) || fact.permission === 'never' || !MEMORY_KEY_RE.test(fact.key)) continue;
+    if (catalogEntry(fact.key) || fact.permission === 'never' || fact.verified === false || !MEMORY_KEY_RE.test(fact.key)) continue;
     out.push({ key: fact.key, description: `User-defined: ${fact.label}`.slice(0, 160), hasValue: Boolean(fact.value) });
   }
   return out;
@@ -335,6 +335,7 @@ export function buildProposals(raw: unknown, ctx: PolicyContext): PolicyResult {
       return missing(withKey, key, locked ? 'Stored in your locked vault: unlock to use' : undefined);
     }
     if (fact.permission === 'never') return { ...withKey, status: 'skipped' as const, note: 'Memory fact is set to never be used' };
+    if (fact.verified === false) return { ...withKey, status: 'skipped' as const, note: 'Confirm this imported fact before using it' };
 
     const resolved = applyTransform(fact.value, m.transform);
     if (!resolved) return missing(withKey, key, 'Could not derive value from memory');
@@ -377,7 +378,7 @@ export function buildProposals(raw: unknown, ctx: PolicyContext): PolicyResult {
       }
     }
 
-    const siteAllowed = fact.allowedSites.includes(ctx.domain);
+    const siteAllowed = /^https?:\/\//.test(ctx.scan.origin) && fact.allowedSites.includes(ctx.scan.origin);
     const approvalRequired =
       needsReview ||
       field.hasExistingValue ||
