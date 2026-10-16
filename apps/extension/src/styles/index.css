@@ -1,46 +1,51 @@
+@import '@fontsource/pixelify-sans/400.css';
+@import '@fontsource/pixelify-sans/600.css';
 @import 'tailwindcss';
 
-/* Warm neutral surfaces, soft charcoal ink, one restrained accent. */
+/*
+ * A2C pixel theme: square edges, 2px ink borders, hard offset shadows,
+ * a small fixed palette, pixel font for headings/controls, plain body text.
+ */
 :root {
-  --cf-bg: #f6f4f1;
-  --cf-surface: #ffffff;
-  --cf-surface-2: #f1eeea;
-  --cf-line: #e4ded7;
-  --cf-ink: #1f1d1b;
-  --cf-muted: #6e6862;
-  --cf-accent: #2f6b5e;
+  --cf-bg: #f1ede2;
+  --cf-surface: #fffdf6;
+  --cf-surface-2: #e9e3d3;
+  --cf-line: #d3cbb7;
+  --cf-ink: #1c1b19;
+  --cf-muted: #5f594f;
+  --cf-accent: #2f5bd3;
   --cf-accent-ink: #ffffff;
-  --cf-accent-soft: #e3efeb;
-  --cf-ok: #2f7a55;
-  --cf-ok-soft: #e5f2ea;
-  --cf-warn: #94650f;
-  --cf-warn-soft: #fbf1dc;
-  --cf-danger: #a83a32;
-  --cf-danger-soft: #f8e4e1;
-  --cf-neutral: #5f5a55;
-  --cf-neutral-soft: #eeebe7;
+  --cf-accent-soft: #dfe6fb;
+  --cf-ok: #2a7a3f;
+  --cf-ok-soft: #dcefd9;
+  --cf-warn: #8a5a00;
+  --cf-warn-soft: #f7e7bf;
+  --cf-danger: #b3261e;
+  --cf-danger-soft: #f6dad6;
+  --cf-neutral: #55504a;
+  --cf-neutral-soft: #e4dfd3;
   color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --cf-bg: #171615;
-    --cf-surface: #201f1d;
-    --cf-surface-2: #2a2826;
-    --cf-line: #36332f;
-    --cf-ink: #edeae6;
-    --cf-muted: #a39d96;
-    --cf-accent: #86c2b2;
-    --cf-accent-ink: #10201c;
-    --cf-accent-soft: #22332e;
-    --cf-ok: #7fc59e;
-    --cf-ok-soft: #1f3128;
-    --cf-warn: #e2b766;
-    --cf-warn-soft: #362c1a;
-    --cf-danger: #ec8f86;
-    --cf-danger-soft: #3a2220;
-    --cf-neutral: #b4aea7;
-    --cf-neutral-soft: #2c2a27;
+    --cf-bg: #121212;
+    --cf-surface: #1c1c1c;
+    --cf-surface-2: #262626;
+    --cf-line: #3a3a3a;
+    --cf-ink: #f2eee4;
+    --cf-muted: #a8a294;
+    --cf-accent: #7d9cff;
+    --cf-accent-ink: #0d1021;
+    --cf-accent-soft: #1e2645;
+    --cf-ok: #7fd08d;
+    --cf-ok-soft: #1b2e1f;
+    --cf-warn: #f0c060;
+    --cf-warn-soft: #34290f;
+    --cf-danger: #ff8a80;
+    --cf-danger-soft: #3a1c1a;
+    --cf-neutral: #bdb7aa;
+    --cf-neutral-soft: #2a2826;
     color-scheme: dark;
   }
 }
@@ -63,7 +68,14 @@
   --color-danger-soft: var(--cf-danger-soft);
   --color-neutral: var(--cf-neutral);
   --color-neutral-soft: var(--cf-neutral-soft);
-  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+  --font-pixel: 'Pixelify Sans', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  --radius-xs: 0px;
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+  --radius-2xl: 0px;
 }
 
 html,
@@ -78,13 +90,49 @@ body {
   color: var(--cf-ink);
   font-family: var(--font-sans);
   font-size: 13px;
-  line-height: 1.45;
-  -webkit-font-smoothing: antialiased;
+  line-height: 1.5;
+}
+
+/* Pixel building blocks */
+.px-card {
+  border: 2px solid var(--cf-ink);
+  background: var(--cf-surface);
+  box-shadow: 3px 3px 0 0 var(--cf-ink);
+}
+
+.px-btn {
+  border: 2px solid var(--cf-ink);
+  box-shadow: 2px 2px 0 0 var(--cf-ink);
+  font-family: var(--font-pixel);
+  letter-spacing: 0.02em;
+  transition: transform 60ms steps(1), box-shadow 60ms steps(1);
+}
+.px-btn:active:not(:disabled) {
+  transform: translate(2px, 2px);
+  box-shadow: none;
+}
+
+.px-input {
+  border: 2px solid var(--cf-line);
+  background: var(--cf-surface);
+}
+.px-input:focus {
+  border-color: var(--cf-accent);
+  outline: none;
+}
+
+.font-pixel {
+  font-family: var(--font-pixel);
 }
 
 :focus-visible {
-  outline: 2px solid var(--cf-accent);
+  outline: 2px dashed var(--cf-accent);
   outline-offset: 2px;
+}
+
+input[type='checkbox'],
+input[type='radio'] {
+  accent-color: var(--cf-accent);
 }
 
 input,
@@ -95,9 +143,9 @@ select {
 }
 
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 10px;
 }
 ::-webkit-scrollbar-thumb {
   background: var(--cf-line);
-  border-radius: 8px;
+  border: 2px solid var(--cf-bg);
 }

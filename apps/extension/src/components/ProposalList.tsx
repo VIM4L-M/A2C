@@ -1,6 +1,7 @@
 import { detectSecretValue, type MemoryFact, type Proposal } from '@a2c/shared';
 import { useApp } from '../hooks/useApp';
 import { resolveForField } from '../hooks/useProposals';
+import { cloudValue } from '../services/cloud';
 import { ProposalRow, type SaveCheck } from './ProposalRow';
 
 interface Props {
@@ -9,6 +10,7 @@ interface Props {
   refreshForKey: (key: string, facts: MemoryFact[], lockedKeys: Set<string>) => void;
   domain: string;
   provenance: 'form_approved' | 'document_approved';
+  onLocate?: (fieldId: string) => void;
 }
 
 /** Facts that may be offered for drafting: standard, usable, not contact details. */
@@ -16,8 +18,8 @@ function draftable(facts: MemoryFact[]): MemoryFact[] {
   return facts.filter((f) => f.sensitivity === 'standard' && f.permission !== 'never' && f.category !== 'contact' && f.value.trim());
 }
 
-export function ProposalList({ proposals, update, refreshForKey, domain, provenance }: Props) {
-  const { facts, checkFact, commitFact, lockedKeys, provider, vaultState } = useApp();
+export function ProposalList({ proposals, update, refreshForKey, domain, provenance, onLocate }: Props) {
+  const { facts, checkFact, commitFact, lockedKeys, provider, vaultState, cloud } = useApp();
   const draftFacts = draftable(facts);
 
   const saveCheck = (p: Proposal, value: string): SaveCheck => {
@@ -71,6 +73,13 @@ export function ProposalList({ proposals, update, refreshForKey, domain, provena
             });
           }}
           onSaveCheck={(v) => saveCheck(p, v)}
+          onLocate={onLocate ? () => onLocate(p.fieldId) : undefined}
+          onCloudSearch={
+            cloud
+              ? async () =>
+                  (await cloud.search(p.missingLabel ?? p.field.label, 3)).map((m) => ({ id: m.id, text: m.content, value: cloudValue(m) }))
+              : undefined
+          }
           onSaveCommit={(v) => saveCommit(p, v)}
           onDraft={async (keys) => {
             const selected = draftFacts.filter((f) => keys.includes(f.key));
@@ -86,8 +95,8 @@ export function ProposalList({ proposals, update, refreshForKey, domain, provena
               value: res.draft,
               status: 'review',
               approved: false,
-              source: provider.kind === 'gemma' ? 'gemma' : 'mock',
-              note: `${provider.kind === 'gemma' ? 'Gemma 4 draft' : 'MOCK template draft (not AI)'}: review and edit before approving.${missing}`,
+              source: provider.kind === 'mock' ? 'mock' : 'gemma',
+              note: `${provider.kind !== 'mock' ? 'Gemma 4 draft' : 'MOCK template draft (not AI)'}: review and edit before approving.${missing}`,
             });
           }}
         />

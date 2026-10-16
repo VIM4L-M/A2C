@@ -6,6 +6,8 @@ import {
   type FillInstruction,
   type FillResponse,
   type ScanResult,
+  type UndoResponse,
+  UndoResponseSchema,
 } from '@a2c/shared';
 import { z } from 'zod';
 
@@ -106,4 +108,18 @@ export async function scanTab(tabId: number): Promise<ScanResult> {
 export async function fillTab(tabId: number, scanId: string, origin: string, fills: FillInstruction[]): Promise<FillResponse> {
   await ensureContentScript(tabId);
   return send(tabId, { type: 'CF_FILL', scanId, origin, fills }, FillResponseSchema);
+}
+
+export async function undoFill(tabId: number, scanId: string): Promise<UndoResponse> {
+  await ensureContentScript(tabId);
+  return send(tabId, { type: 'CF_UNDO', scanId }, UndoResponseSchema);
+}
+
+export async function locateOnPage(tabId: number, scanId: string, fieldId: string): Promise<boolean> {
+  try {
+    const res = await send(tabId, { type: 'CF_LOCATE', scanId, fieldId }, z.object({ ok: z.boolean() }));
+    return res.ok;
+  } catch {
+    return false;
+  }
 }

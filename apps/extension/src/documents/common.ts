@@ -48,6 +48,7 @@ export function toDocScan(raw: DocFieldRaw[]): DocScan {
       label,
       hint: red ? '' : normalizeText(f.name).slice(0, 120),
       section: '',
+      placeholder: '',
       autocomplete: '',
       required: false,
       multiple: false,

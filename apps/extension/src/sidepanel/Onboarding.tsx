@@ -4,11 +4,14 @@ import { useState } from 'react';
 import { Button, Card, FieldLabel, Notice, SelectInput, TextInput } from '../components/ui';
 import { useApp } from '../hooks/useApp';
 import { DEMO_PROFILE } from '../memory/facts';
+import { checkPassphrase } from '../memory/vault';
 
-const STARTER_KEYS = ['full_name', 'email', 'college', 'degree', 'major', 'skills', 'github_url', 'portfolio_url', 'linkedin_url'];
+const STARTER_KEYS = ['full_name', 'email', 'phone', 'college', 'degree', 'major', 'graduation_year', 'skills', 'github_url', 'portfolio_url', 'linkedin_url', 'current_role', 'work_experience'];
 
 export function Onboarding() {
-  const { checkFact, commitFact, updateSettings } = useApp();
+  const { checkFact, commitFact, updateSettings, createVault, vaultState } = useApp();
+  const [pass, setPass] = useState('');
+  const [pass2, setPass2] = useState('');
   const [step, setStep] = useState(0);
   const [values, setValues] = useState<Record<string, string>>({});
   const [perms, setPerms] = useState<Record<string, MemoryPermission>>({});
@@ -23,6 +26,12 @@ export function Onboarding() {
       const c = checkFact({ key, value: values[key]!, source: 'onboarding' });
       if (!c.ok) errs[key] = c.error;
     }
+    // Private facts (phone) live only in the encrypted vault.
+    if (values.phone?.trim() && vaultState === 'none') {
+      const weak = checkPassphrase(pass);
+      if (weak) errs.phone = `Vault passphrase: ${weak}`;
+      else if (pass !== pass2) errs.phone = 'Vault passphrases do not match';
+    }
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -30,6 +39,7 @@ export function Onboarding() {
   const finish = async () => {
     setBusy(true);
     try {
+      if (values.phone?.trim() && vaultState === 'none') await createVault(pass);
       for (const key of entered) {
         const c = checkFact({ key, value: values[key]!, permission: perms[key], source: 'onboarding' });
         if (c.ok) await commitFact(c.fact);
@@ -55,7 +65,7 @@ export function Onboarding() {
           <div className="flex items-center gap-2 text-base font-semibold">
             <Sparkles className="size-4 text-accent" aria-hidden /> Welcome to A2C
           </div>
-          <p className="mt-1 text-[13px] text-muted">Your context. Any form. One click.</p>
+          <p className="mt-1 text-[13px] text-muted">AI to Completion. Your memory. Any form. Automatically completed.</p>
           <ul className="mt-3 list-disc space-y-1 pl-4 text-[12.5px] text-ink/85">
             <li>Save the details you are happy to reuse.</li>
             <li>Scan a form: Gemma 4 matches fields to your memory.</li>
@@ -80,6 +90,13 @@ export function Onboarding() {
                   {catalogEntry(key)?.label}
                 </FieldLabel>
                 <TextInput id={`ob-${key}`} value={values[key] ?? ''} autoComplete="off" onChange={(e) => setValues({ ...values, [key]: e.target.value })} />
+                {key === 'phone' && values.phone?.trim() && vaultState === 'none' ? (
+                  <div className="mt-1.5 flex flex-col gap-1.5 border-2 border-dashed border-line p-2">
+                    <div className="text-[11px] text-muted">Phone is private: it is stored only in an encrypted vault. Choose a passphrase (10+ characters). It cannot be recovered.</div>
+                    <TextInput type="password" autoComplete="new-password" placeholder="Vault passphrase" value={pass} onChange={(e) => setPass(e.target.value)} />
+                    <TextInput type="password" autoComplete="new-password" placeholder="Confirm passphrase" value={pass2} onChange={(e) => setPass2(e.target.value)} />
+                  </div>
+                ) : null}
                 {errors[key] ? <div className="mt-1 text-xs text-danger">{errors[key]}</div> : null}
               </div>
             ))}
@@ -98,15 +115,15 @@ export function Onboarding() {
                 <div key={key} className="flex items-center justify-between gap-2">
                   <span className="text-[12.5px]">{e.label}</span>
                   <SelectInput className="w-40" value={perms[key] ?? e.defaultPermission} onChange={(ev) => setPerms({ ...perms, [key]: ev.target.value as MemoryPermission })}>
-                    <option value="auto">Use automatically</option>
-                    <option value="ask">Ask every time</option>
-                    <option value="never">Never use</option>
+                    <option value="auto">Automatic candidate</option>
+                    <option value="ask">Approval required</option>
+                    <option value="never">Never collect</option>
                   </SelectInput>
                 </div>
               );
             })}
           </div>
-          <p className="mt-3 text-[11px] text-muted">Sensitive fields such as email and phone always need your approval on each site, even if set to automatic.</p>
+          <p className="mt-3 text-[11px] text-muted">Sensitive fields such as email and phone always need your approval on each site, even if marked as automatic candidates.</p>
         </Card>
       ) : null}
 

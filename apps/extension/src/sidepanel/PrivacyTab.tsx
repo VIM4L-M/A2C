@@ -1,73 +1,87 @@
-import { Cpu, KeyRound, Lock, RefreshCw, Shield, Trash2, Unlock } from 'lucide-react';
+import { Cloud, KeyRound, Lock, Shield, Trash2, Unlock } from 'lucide-react';
 import { useState } from 'react';
-import { Badge, Button, Card, FieldLabel, Notice, SectionTitle, TextInput } from '../components/ui';
+import { Badge, Button, Card, Checkbox, Notice, SectionTitle, TextInput } from '../components/ui';
 import { useApp } from '../hooks/useApp';
-import { isLocalProxyUrl } from '../lib/settings';
 import { checkPassphrase } from '../memory/vault';
 
-function EngineCard() {
-  const { settings, updateSettings, health, refreshHealth } = useApp();
-  const [url, setUrl] = useState(settings.proxyUrl);
-  const [urlError, setUrlError] = useState<string | null>(null);
+function CategoriesCard() {
+  const rows: Array<[string, 'ok' | 'warn' | 'danger' | 'neutral', string]> = [
+    ['Green', 'ok', 'Approved general info (name, education, public links, skills). Pre-ticked when the fact is an "Automatic candidate".'],
+    ['Amber', 'warn', 'Email, phone, address, birth date, grades, salary, IDs, demographic data, essays. Always needs your tick.'],
+    ['Red', 'danger', 'Passwords, OTPs, CVV, card and bank numbers, tokens, private keys, recovery codes. Never read, stored, sent or filled.'],
+    ['Gray', 'neutral', 'Unknown, CAPTCHA, signatures, legal declarations, instruction-like labels, unsupported controls. You fill these.'],
+  ];
   return (
     <Card>
-      <SectionTitle action={<Button size="sm" variant="ghost" icon={RefreshCw} onClick={() => void refreshHealth(true)}>Test</Button>}>AI engine</SectionTitle>
-      <div className="flex flex-col gap-2">
-        <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-line p-2.5">
-          <input type="radio" name="mode" className="mt-0.5 accent-[var(--cf-accent)]" checked={settings.aiMode === 'gemma'} onChange={() => void updateSettings({ aiMode: 'gemma' })} />
-          <span>
-            <span className="font-medium">Gemma 4 via local proxy</span>
-            <span className="block text-xs text-muted">Real model inference through the A2C proxy on this computer.</span>
-          </span>
-        </label>
-        <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-line p-2.5">
-          <input type="radio" name="mode" className="mt-0.5 accent-[var(--cf-accent)]" checked={settings.aiMode === 'mock'} onChange={() => void updateSettings({ aiMode: 'mock' })} />
-          <span>
-            <span className="font-medium">Mock mode</span>
-            <span className="block text-xs text-muted">Deterministic keyword rules for offline demos. Not AI, clearly labelled.</span>
-          </span>
-        </label>
-        <div>
-          <FieldLabel htmlFor="proxy-url">Proxy URL</FieldLabel>
-          <div className="flex gap-2">
-            <TextInput id="proxy-url" value={url} onChange={(e) => setUrl(e.target.value)} />
-            <Button
-              onClick={async () => {
-                const normalized = url.trim().replace(/\/+$/, '') + '/';
-                if (!isLocalProxyUrl(normalized)) return setUrlError('Must be http://127.0.0.1:<port> or http://localhost:<port>');
-                setUrlError(null);
-                await updateSettings({ proxyUrl: normalized.replace(/\/$/, '') });
-              }}
-            >
-              Save
+      <SectionTitle>Autofill policies</SectionTitle>
+      <ul className="flex flex-col gap-2">
+        {rows.map(([name, tone, text]) => (
+          <li key={name} className="flex gap-2 text-xs">
+            <Badge tone={tone} className="w-16 justify-center">
+              {name}
+            </Badge>
+            <span className="text-ink/85">{text}</span>
+          </li>
+        ))}
+      </ul>
+    </Card>
+  );
+}
+
+function CloudCard() {
+  const { settings, updateSettings, cloud, health } = useApp();
+  const [confirm, setConfirm] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const backboardReady = health.state === 'ok' && health.data.backboard.configured;
+
+  const deleteAll = async () => {
+    if (!cloud) return;
+    setBusy(true);
+    setMsg(null);
+    try {
+      const all = await cloud.list();
+      for (const m of all) await cloud.remove(m.id);
+      setMsg(`Deleted ${all.length} cloud memor${all.length === 1 ? 'y' : 'ies'}.`);
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : 'Could not delete cloud memories');
+    } finally {
+      setBusy(false);
+      setConfirm(false);
+    }
+  };
+
+  return (
+    <Card>
+      <SectionTitle action={<Badge tone={settings.cloudMemory ? 'accent' : 'neutral'}>{settings.cloudMemory ? 'On' : 'Off'}</Badge>}>Cloud memory (Backboard)</SectionTitle>
+      <p className="text-xs text-ink/85">
+        Off by default. When on, you can choose individual non-sensitive facts (education, skills, public links) to save to your own Backboard memory, so they follow you
+        across devices. Private facts, contact details, credentials and documents never go to the cloud. Local memory keeps working if the cloud is down.
+      </p>
+      <div className="mt-2.5">
+        <Checkbox checked={settings.cloudMemory} label="I agree to use cloud memory for facts I explicitly save" onChange={(v) => void updateSettings({ cloudMemory: v })} />
+      </div>
+      {settings.cloudMemory && !backboardReady ? (
+        <div className="mt-2 text-xs text-warn">The backend does not report Backboard as configured (Settings → Test connection).</div>
+      ) : null}
+      {settings.cloudMemory ? (
+        confirm ? (
+          <div className="mt-3 flex items-center gap-2 text-xs">
+            <span>Delete every cloud memory?</span>
+            <Button size="sm" variant="danger" loading={busy} onClick={deleteAll}>
+              Delete
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setConfirm(false)}>
+              Cancel
             </Button>
           </div>
-          {urlError ? <div className="mt-1 text-xs text-danger">{urlError}</div> : null}
-        </div>
-        <div className="rounded-lg bg-surface-2 p-2.5 text-xs">
-          <div className="flex items-center gap-1.5 font-medium">
-            <Cpu className="size-3.5" aria-hidden /> Status
-          </div>
-          <div className="mt-1">
-            {settings.aiMode === 'mock' ? (
-              <Badge tone="warn">MOCK MODE: no AI in use</Badge>
-            ) : health.status === 'checking' ? (
-              'Checking...'
-            ) : health.status === 'ok' ? (
-              <>
-                <Badge tone="ok">Real Gemma configured</Badge>
-                <div className="mt-1 break-all text-muted">Model: {health.model}</div>
-                {health.upstreamReachable === false ? <div className="mt-1 text-danger">Proxy is up, but the Gemma server did not answer.</div> : null}
-              </>
-            ) : health.status === 'not_configured' ? (
-              <Badge tone="warn">Proxy running, Gemma not configured (set GEMMA_BASE_URL and GEMMA_MODEL)</Badge>
-            ) : (
-              <Badge tone="danger">Proxy not reachable: run npm run start:server</Badge>
-            )}
-          </div>
-          <div className="mt-1.5 text-muted">Endpoint: {settings.proxyUrl}</div>
-        </div>
-      </div>
+        ) : (
+          <Button className="mt-3" variant="danger" icon={Cloud} onClick={() => setConfirm(true)}>
+            Delete all cloud memories
+          </Button>
+        )
+      ) : null}
+      {msg ? <div className="mt-2 text-xs">{msg}</div> : null}
     </Card>
   );
 }
@@ -112,9 +126,9 @@ function VaultCard() {
       >
         Private vault
       </SectionTitle>
-      <p className="text-xs text-muted">
-        Private facts (phone, city, date of birth, grades...) are encrypted with AES-GCM using a key derived from your passphrase (PBKDF2-SHA-256, 600,000 iterations,
-        random salt). The passphrase is never stored. If you forget it, the vault cannot be recovered.
+      <p className="text-xs text-ink/85">
+        Private facts (phone, city, birth date, grades) are encrypted with AES-GCM, using a key derived from your passphrase (PBKDF2-SHA-256, 600,000 iterations, random salt).
+        The passphrase is never stored. Forget it and the vault cannot be recovered.
       </p>
       {vaultState === 'unlocked' ? (
         <Button className="mt-3" icon={Lock} onClick={lockVault}>
@@ -141,31 +155,7 @@ function VaultCard() {
           </Button>
         </form>
       )}
-      <p className="mt-2 text-[11px] text-muted">The vault locks automatically when the side panel closes. Decrypted facts only exist in the side panel's memory while unlocked.</p>
-    </Card>
-  );
-}
-
-function CategoriesCard() {
-  const rows: Array<[string, 'ok' | 'warn' | 'danger' | 'neutral', string]> = [
-    ['Green', 'ok', 'General approved info (name, education, public links, skills). Pre-approved if the fact is set to "Use automatically".'],
-    ['Amber', 'warn', 'Phone, email, address, birth date, grades, salary, IDs, demographic or medical data, essays. Always needs your tick.'],
-    ['Red', 'danger', 'Passwords, OTPs, CVV, card and bank numbers, API keys, recovery codes. Never read, stored, sent or filled.'],
-    ['Gray', 'neutral', 'Unknown, CAPTCHA, signatures, legal consent, instruction-like labels, unsupported inputs. Manual only.'],
-  ];
-  return (
-    <Card>
-      <SectionTitle>Field categories</SectionTitle>
-      <ul className="flex flex-col gap-2">
-        {rows.map(([name, tone, text]) => (
-          <li key={name} className="flex gap-2 text-xs">
-            <Badge tone={tone} className="w-14 justify-center">
-              {name}
-            </Badge>
-            <span className="text-ink/80">{text}</span>
-          </li>
-        ))}
-      </ul>
+      <p className="mt-2 text-[11px] text-muted">The vault locks when the side panel closes. Decrypted facts exist only in the side panel's memory while unlocked.</p>
     </Card>
   );
 }
@@ -175,11 +165,11 @@ function DataCard() {
   const [confirm, setConfirm] = useState(false);
   return (
     <Card>
-      <SectionTitle>Your data</SectionTitle>
+      <SectionTitle>Clear local data</SectionTitle>
       {confirm ? (
         <Notice
           tone="danger"
-          title="Delete all memory, including the vault?"
+          title="Delete all local memory, including the vault?"
           action={
             <div className="flex gap-2">
               <Button size="sm" variant="danger" onClick={() => void clearMemory().then(() => setConfirm(false))}>
@@ -191,12 +181,12 @@ function DataCard() {
             </div>
           }
         >
-          This cannot be undone.
+          This cannot be undone. Cloud memories are deleted separately above.
         </Notice>
       ) : (
         <div className="flex flex-wrap gap-2">
           <Button variant="danger" icon={Trash2} onClick={() => setConfirm(true)}>
-            Clear all memory
+            Clear local memory
           </Button>
           <Button icon={Trash2} onClick={() => void clearActivity()}>
             Clear activity
@@ -207,17 +197,17 @@ function DataCard() {
   );
 }
 
-function LimitsCard() {
+function StorageCard() {
   return (
     <Card>
-      <SectionTitle>Honest limitations</SectionTitle>
-      <ul className="list-disc space-y-1 pl-4 text-xs text-ink/80">
-        <li>Standard (non-private) facts are stored in chrome.storage.local, which is not encrypted. Anyone with access to your browser profile can read them.</li>
-        <li>The vault protects data at rest only. While unlocked, malware or a compromised browser could read it.</li>
-        <li>Field labels, option labels and memory key names are sent to the Gemma proxy. Memory values are not, except facts you tick for a draft.</li>
-        <li>The local proxy is unauthenticated. It only accepts the extension's origin, but other programs on this computer can still call it.</li>
-        <li>Classification is rule-based and conservative but not perfect. Always review before submitting.</li>
-        <li>Forms inside iframes and closed shadow roots are not scanned.</li>
+      <SectionTitle>Storage security</SectionTitle>
+      <ul className="list-disc space-y-1 pl-4 text-xs text-ink/85">
+        <li>Standard facts and settings (including the backend token) are in chrome.storage.local, which is NOT encrypted.</li>
+        <li>Private facts are only stored inside the encrypted vault. While unlocked, malware with access to your browser could read them.</li>
+        <li>Field labels, option labels and memory key names go to the backend for Gemma. Values do not, except facts you tick for a draft.</li>
+        <li>Cloud memory holds only facts you explicitly save, in a Backboard assistant used only for your account.</li>
+        <li>Classification is rule-based and conservative but not perfect. Always review before submitting. A2C never submits.</li>
+        <li>Iframes and closed shadow roots are not scanned.</li>
       </ul>
     </Card>
   );
@@ -226,14 +216,14 @@ function LimitsCard() {
 export function PrivacyTab() {
   return (
     <div className="flex flex-col gap-3">
-      <Notice tone="accent" icon={Shield} title="What goes to the AI">
-        Only field labels, types, option labels and the names of your memory keys. Values are resolved on your device. A2C never submits forms.
+      <Notice tone="accent" icon={Shield} title="What leaves your browser">
+        Only field labels, types, option labels and memory key names, sent to your A2C backend for Gemma. Your values are resolved on this device.
       </Notice>
-      <EngineCard />
-      <VaultCard />
       <CategoriesCard />
+      <CloudCard />
+      <VaultCard />
+      <StorageCard />
       <DataCard />
-      <LimitsCard />
     </div>
   );
 }

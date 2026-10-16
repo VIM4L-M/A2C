@@ -12,15 +12,17 @@ import {
   type MappingSource,
 } from '@a2c/shared';
 import { z } from 'zod';
-import { isLocalProxyUrl } from '../lib/settings';
+import { isAllowedBackendUrl } from '../lib/settings';
 
 /**
- * AI provider interface. GemmaProvider talks to the local proxy (which holds
- * the Gemma endpoint + API key). MockProvider is deterministic and is always
- * labelled MOCK MODE in the UI. Both return declarative mappings only.
+ * AI provider interface. GemmaProvider talks to the A2C backend (local or
+ * Render), which holds the Gemma endpoint and API keys. engine "specialist"
+ * asks the backend for the optional Tinker-fine-tuned mapping model instead.
+ * MockProvider is deterministic and always labelled MOCK MODE in the UI.
+ * All providers return declarative mappings only; the policy engine decides.
  */
 export interface AIProvider {
-  readonly kind: 'gemma' | 'mock';
+  readonly kind: 'gemma' | 'specialist' | 'mock';
   mapFields(request: FieldMappingRequest): Promise<FieldMappingResponse>;
   draftAnswer(request: DraftRequest): Promise<DraftResponse>;
 }
@@ -39,31 +41,41 @@ const ErrorBodySchema = z.object({ error: z.string().max(60), message: z.string(
 
 type FetchLike = typeof fetch;
 
-export class GemmaProvider implements AIProvider {
-  readonly kind = 'gemma' as const;
+export interface BackendOptions {
+  token?: string;
+  fetchImpl?: FetchLike;
+  timeoutMs?: number;
+}
+
+/** Authenticated JSON calls to the A2C backend. */
+export class BackendClient {
+  private readonly fetchImpl: FetchLike;
 
   constructor(
-    private readonly proxyUrl: string,
-    private readonly fetchImpl: FetchLike = (...args) => fetch(...args),
-    private readonly timeoutMs = 120_000,
+    readonly baseUrl: string,
+    private readonly opts: BackendOptions = {},
   ) {
-    if (!isLocalProxyUrl(proxyUrl)) throw new InferenceError('Proxy URL must be http://127.0.0.1:<port> or http://localhost:<port>', 'bad_proxy_url');
+    if (!isAllowedBackendUrl(baseUrl)) throw new InferenceError('Backend must be http://127.0.0.1:<port>, http://localhost:<port> or https://<name>.onrender.com', 'bad_backend_url');
+    this.fetchImpl = opts.fetchImpl ?? ((...args) => fetch(...args));
   }
 
-  private async post(path: string, body: unknown): Promise<unknown> {
+  async request(method: 'GET' | 'POST' | 'DELETE', path: string, body?: unknown, timeoutMs = this.opts.timeoutMs ?? 120_000): Promise<unknown> {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), this.timeoutMs);
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    const headers: Record<string, string> = {};
+    if (body !== undefined) headers['Content-Type'] = 'application/json';
+    if (this.opts.token) headers.Authorization = `Bearer ${this.opts.token}`;
     let res: Response;
     try {
-      res = await this.fetchImpl(new URL(path, this.proxyUrl).toString(), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+      res = await this.fetchImpl(new URL(path, this.baseUrl).toString(), {
+        method,
+        headers,
+        body: body === undefined ? undefined : JSON.stringify(body),
         signal: controller.signal,
       });
     } catch (err) {
-      if ((err as Error).name === 'AbortError') throw new InferenceError('Gemma request timed out', 'timeout');
-      throw new InferenceError('Local Gemma proxy is not reachable. Start it with "npm run start:server".', 'proxy_unreachable');
+      if ((err as Error).name === 'AbortError') throw new InferenceError('Request to the A2C backend timed out', 'timeout');
+      throw new InferenceError('A2C backend is not reachable. Start it with "npm run start:server" or check Settings.', 'proxy_unreachable');
     } finally {
       clearTimeout(timer);
     }
@@ -71,33 +83,46 @@ export class GemmaProvider implements AIProvider {
     try {
       data = await res.json();
     } catch {
-      throw new InferenceError(`Proxy returned HTTP ${res.status} without JSON`, 'bad_response');
+      throw new InferenceError(`Backend returned HTTP ${res.status} without JSON`, 'bad_response');
     }
     if (!res.ok) {
       const e = ErrorBodySchema.safeParse(data);
       const code = e.success ? e.data.error : `http_${res.status}`;
       const message =
         code === 'not_configured'
-          ? 'Gemma is not configured on the proxy (set GEMMA_BASE_URL and GEMMA_MODEL).'
-          : e.success && e.data.message
-            ? e.data.message
-            : `Proxy error (${code})`;
+          ? 'Gemma is not configured on the backend (set GEMMA_BASE_URL and GEMMA_MODEL).'
+          : code === 'unauthorized'
+            ? 'The backend rejected your access token (Settings).'
+            : e.success && e.data.message
+              ? e.data.message
+              : `Backend error (${code})`;
       throw new InferenceError(message, code);
     }
     return data;
   }
+}
+
+export class GemmaProvider implements AIProvider {
+  readonly kind: 'gemma' | 'specialist';
+  private readonly backend: BackendClient;
+
+  constructor(backendUrl: string, opts: BackendOptions & { engine?: 'gemma' | 'specialist' } = {}) {
+    this.backend = new BackendClient(backendUrl, opts);
+    this.kind = opts.engine ?? 'gemma';
+  }
 
   async mapFields(request: FieldMappingRequest): Promise<FieldMappingResponse> {
     const body = FieldMappingRequestSchema.parse(request);
-    const data = await this.post('/api/map', body);
+    const data = await this.backend.request('POST', this.kind === 'specialist' ? '/api/map?engine=specialist' : '/api/map', body);
     const parsed = FieldMappingResponseSchema.safeParse(data);
-    if (!parsed.success) throw new InferenceError('Gemma mapping response failed validation', 'invalid_model_output');
+    if (!parsed.success) throw new InferenceError('Model mapping response failed validation', 'invalid_model_output');
     return parsed.data;
   }
 
   async draftAnswer(request: DraftRequest): Promise<DraftResponse> {
+    // Drafts always use Gemma 4.
     const body = DraftRequestSchema.parse(request);
-    const data = await this.post('/api/draft', body);
+    const data = await this.backend.request('POST', '/api/draft', body);
     const parsed = DraftResponseSchema.safeParse(data);
     if (!parsed.success) throw new InferenceError('Gemma draft response failed validation', 'invalid_model_output');
     return parsed.data;
@@ -123,49 +148,70 @@ export interface MappingOutcome {
 }
 
 /**
- * Map with Gemma, falling back to the deterministic rules when inference is
- * unavailable. The fallback is reported as "rules", never as Gemma.
+ * Map with the model, falling back to the deterministic rules when inference
+ * is unavailable. The fallback is reported as "rules", never as the model.
  */
 export async function mapWithFallback(provider: AIProvider, request: FieldMappingRequest): Promise<MappingOutcome> {
   if (provider.kind === 'mock') return { raw: await provider.mapFields(request), source: 'mock' };
   try {
-    return { raw: await provider.mapFields(request), source: 'gemma' };
+    return { raw: await provider.mapFields(request), source: provider.kind };
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Gemma request failed';
+    const message = err instanceof Error ? err.message : 'Model request failed';
     return { raw: deterministicMap(request), source: 'rules', error: message };
   }
 }
+
+// ---------------------------------------------------------------------------
+// Health / status
+// ---------------------------------------------------------------------------
 
 export const HealthSchema = z.object({
   ok: z.boolean(),
   configured: z.boolean(),
   model: z.string().nullable(),
-  upstreamHost: z.string().nullable().optional(),
-  upstream: z.object({ reachable: z.boolean(), models: z.array(z.string()) }).nullable().optional(),
 });
 
 export type ProxyHealth =
-  | { status: 'ok'; model: string; upstreamReachable?: boolean; models?: string[] }
+  | { status: 'ok'; model: string }
   | { status: 'not_configured' }
   | { status: 'unreachable'; message: string };
 
-export async function checkHealth(proxyUrl: string, probe = false, fetchImpl: FetchLike = (...a) => fetch(...a)): Promise<ProxyHealth> {
-  if (!isLocalProxyUrl(proxyUrl)) return { status: 'unreachable', message: 'Proxy URL must be local' };
+export async function checkHealth(backendUrl: string, fetchImpl: FetchLike = (...a) => fetch(...a)): Promise<ProxyHealth> {
+  if (!isAllowedBackendUrl(backendUrl)) return { status: 'unreachable', message: 'Backend URL not allowed' };
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 6_000);
-    const res = await fetchImpl(new URL(`/api/health${probe ? '?probe=1' : ''}`, proxyUrl).toString(), { signal: controller.signal });
+    const res = await fetchImpl(new URL('/api/health', backendUrl).toString(), { signal: controller.signal });
     clearTimeout(timer);
     const parsed = HealthSchema.safeParse(await res.json());
     if (!parsed.success) return { status: 'unreachable', message: 'Unexpected health response' };
     if (!parsed.data.configured || !parsed.data.model) return { status: 'not_configured' };
-    return {
-      status: 'ok',
-      model: parsed.data.model,
-      upstreamReachable: parsed.data.upstream?.reachable,
-      models: parsed.data.upstream?.models,
-    };
+    return { status: 'ok', model: parsed.data.model };
   } catch {
-    return { status: 'unreachable', message: 'Proxy not running' };
+    return { status: 'unreachable', message: 'Backend not running' };
+  }
+}
+
+const StatusSchema = z.object({
+  ok: z.boolean(),
+  user: z.string(),
+  authRequired: z.boolean(),
+  gemma: z.object({ configured: z.boolean(), model: z.string().nullable(), reachable: z.boolean().nullable(), models: z.array(z.string()).default([]) }),
+  specialist: z.object({ configured: z.boolean(), model: z.string().nullable(), reachable: z.boolean().nullable() }),
+  backboard: z.object({ configured: z.boolean(), reachable: z.boolean().nullable() }),
+});
+
+export type BackendStatus = { state: 'ok'; data: z.infer<typeof StatusSchema> } | { state: 'unauthorized' } | { state: 'unreachable'; message: string };
+
+/** Real connection check used by Settings. Nothing is shown as connected without it. */
+export async function checkStatus(backendUrl: string, token: string, probe: boolean, fetchImpl?: FetchLike): Promise<BackendStatus> {
+  try {
+    const client = new BackendClient(backendUrl, { token, fetchImpl, timeoutMs: probe ? 15_000 : 6_000 });
+    const parsed = StatusSchema.safeParse(await client.request('GET', `/api/status${probe ? '?probe=1' : ''}`));
+    if (!parsed.success) return { state: 'unreachable', message: 'Unexpected status response' };
+    return { state: 'ok', data: parsed.data };
+  } catch (err) {
+    if (err instanceof InferenceError && err.code === 'unauthorized') return { state: 'unauthorized' };
+    return { state: 'unreachable', message: err instanceof Error ? err.message : 'Backend not reachable' };
   }
 }

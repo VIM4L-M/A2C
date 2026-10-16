@@ -2,6 +2,8 @@ import {
   applyTransform,
   buildMappingRequest,
   buildProposals,
+  deterministicMap,
+  type FieldMappingRequest,
   detectSecretValue,
   matchOption,
   splitList,
@@ -13,7 +15,7 @@ import {
   type ScanResult,
 } from '@a2c/shared';
 import { useCallback, useRef, useState } from 'react';
-import { mapWithFallback, type AIProvider } from '../services/ai';
+import { mapWithFallback, type AIProvider, type MappingOutcome } from '../services/ai';
 
 /**
  * Shared review-list state for websites and documents:
@@ -25,6 +27,24 @@ export interface MappingInfo {
   error?: string;
   issues: string[];
   aiFieldCount: number;
+  /** Exactly what was (or would have been) sent to the AI: labels and key names only. */
+  request: FieldMappingRequest | null;
+  cached: boolean;
+}
+
+/** Session-only cache: rescanning the same form does not wait for the model again. */
+const CACHE = new Map<string, MappingOutcome>();
+const CACHE_MAX = 30;
+
+function cacheKey(kind: string, request: FieldMappingRequest): string {
+  // Field ids are random per scan; key on what the model actually sees.
+  return `${kind}:${JSON.stringify({ ...request, fields: request.fields.map((f) => ({ ...f, id: '' })) })}`;
+}
+
+function remapIds(outcome: MappingOutcome, from: FieldMappingRequest, to: FieldMappingRequest): MappingOutcome {
+  const map = new Map(from.fields.map((f, i) => [f.id, to.fields[i]?.id]));
+  const raw = outcome.raw as { mappings?: Array<{ fieldId: string }> };
+  return { ...outcome, raw: { mappings: (raw.mappings ?? []).map((m) => ({ ...m, fieldId: map.get(m.fieldId) ?? m.fieldId })) } };
 }
 
 interface LastRun {
@@ -74,17 +94,41 @@ export function useProposals() {
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [info, setInfo] = useState<MappingInfo | null>(null);
   const last = useRef<LastRun | null>(null);
+  const skipRef = useRef<(() => void) | null>(null);
+
+  /** Users report slow AI as a top frustration: let them switch to instant rules mid-request. */
+  const skipAI = useCallback(() => skipRef.current?.(), []);
 
   const run = useCallback(
     async (scan: ScanResult, facts: MemoryFact[], lockedKeys: Set<string>, provider: AIProvider, domain: string) => {
       const request = buildMappingRequest(scan, facts, lockedKeys);
       const offeredKeys = new Set(request?.availableMemoryKeys.map((k) => k.key) ?? []);
-      const outcome = request ? await mapWithFallback(provider, request) : { raw: { mappings: [] }, source: provider.kind === 'mock' ? ('mock' as const) : ('rules' as const) };
+      let cached = false;
+      let outcome: MappingOutcome;
+      if (!request) outcome = { raw: { mappings: [] }, source: provider.kind === 'mock' ? 'mock' : 'rules' };
+      else {
+        const key = cacheKey(provider.kind, request);
+        const hit = CACHE.get(key) as (MappingOutcome & { request: FieldMappingRequest }) | undefined;
+        if (hit) {
+          outcome = remapIds(hit, hit.request, request);
+          cached = true;
+        } else {
+          const skipped = new Promise<MappingOutcome>((resolve) => {
+            skipRef.current = () => resolve({ raw: deterministicMap(request), source: 'rules', error: 'You switched to instant rules while the AI was working.' });
+          });
+          outcome = await Promise.race([mapWithFallback(provider, request), skipped]);
+          skipRef.current = null;
+          if (outcome.source === 'gemma' || outcome.source === 'specialist') {
+            if (CACHE.size >= CACHE_MAX) CACHE.delete(CACHE.keys().next().value!);
+            CACHE.set(key, { ...outcome, request } as MappingOutcome);
+          }
+        }
+      }
       const factMap = new Map(facts.map((f) => [f.key, f]));
       const result = buildProposals(outcome.raw, { scan, facts: factMap, lockedKeys, offeredKeys, domain, source: outcome.source });
       last.current = { raw: outcome.raw, scan, offeredKeys, domain, source: outcome.source };
       setProposals(result.proposals);
-      setInfo({ source: outcome.source, error: 'error' in outcome ? outcome.error : undefined, issues: result.issues, aiFieldCount: request?.fields.length ?? 0 });
+      setInfo({ source: outcome.source, error: outcome.error, issues: result.issues, aiFieldCount: request?.fields.length ?? 0, request, cached });
       return result.proposals;
     },
     [],
@@ -110,5 +154,5 @@ export function useProposals() {
     last.current = null;
   }, []);
 
-  return { proposals, setProposals, info, run, update, refreshForKey, reset };
+  return { proposals, setProposals, info, run, update, refreshForKey, reset, skipAI };
 }

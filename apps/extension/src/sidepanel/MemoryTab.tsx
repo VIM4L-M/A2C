@@ -1,8 +1,9 @@
 import { catalogEntry, MEMORY_CATALOG, MEMORY_KEY_RE, slugifyKey, type MemoryCategory, type MemoryFact, type MemoryPermission } from '@a2c/shared';
-import { Brain, Eye, EyeOff, Lock, Pencil, Plus, Save, Trash2, X } from 'lucide-react';
-import { useState } from 'react';
+import { Brain, Cloud, CloudUpload, Eye, EyeOff, Lock, Pencil, Plus, RefreshCw, Save, Trash2, X } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 import { Badge, Button, Card, EmptyState, FieldLabel, Notice, SectionTitle, SelectInput, TextArea, TextInput } from '../components/ui';
 import { useApp } from '../hooks/useApp';
+import { canSyncToCloud, cloudValue, type CloudMemory } from '../services/cloud';
 
 const CATEGORY_LABEL: Record<MemoryCategory, string> = {
   identity: 'Identity',
@@ -15,9 +16,9 @@ const CATEGORY_LABEL: Record<MemoryCategory, string> = {
 };
 
 const PERMISSION_LABEL: Record<MemoryPermission, string> = {
-  auto: 'Use automatically',
-  ask: 'Ask every time',
-  never: 'Never use',
+  auto: 'Automatic candidate',
+  ask: 'Approval required',
+  never: 'Never collect',
 };
 
 function provenanceText(f: MemoryFact): string {
@@ -139,9 +140,10 @@ function FactEditor({ initial, onDone }: { initial?: MemoryFact; onDone: () => v
   );
 }
 
-function FactCard({ f }: { f: MemoryFact }) {
-  const { setPermission, deleteFact, setSiteAllowed } = useApp();
+function FactCard({ f, onCloudChange }: { f: MemoryFact; onCloudChange: () => void }) {
+  const { setPermission, deleteFact, setSiteAllowed, cloud } = useApp();
   const [editing, setEditing] = useState(false);
+  const [cloudState, setCloudState] = useState<'idle' | 'confirm' | 'busy' | 'done' | string>('idle');
   const [reveal, setReveal] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   if (editing) return <FactEditor initial={f} onDone={() => setEditing(false)} />;
@@ -187,6 +189,41 @@ function FactCard({ f }: { f: MemoryFact }) {
           ))}
         </div>
       ) : null}
+      {cloud && canSyncToCloud(f) ? (
+        <div className="mt-2 text-xs">
+          {cloudState === 'confirm' ? (
+            <div className="flex items-center gap-2">
+              <span>Save this fact to your cloud memory?</span>
+              <Button
+                size="sm"
+                variant="primary"
+                onClick={async () => {
+                  setCloudState('busy');
+                  try {
+                    await cloud.save(f);
+                    setCloudState('done');
+                    onCloudChange();
+                  } catch (e) {
+                    setCloudState(e instanceof Error ? e.message : 'Cloud save failed');
+                  }
+                }}
+              >
+                Save
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setCloudState('idle')}>
+                Cancel
+              </Button>
+            </div>
+          ) : cloudState === 'done' ? (
+            <span className="text-ok">Saved to cloud memory</span>
+          ) : (
+            <Button size="sm" icon={CloudUpload} loading={cloudState === 'busy'} onClick={() => setCloudState('confirm')}>
+              Save to cloud
+            </Button>
+          )}
+          {!['idle', 'confirm', 'busy', 'done'].includes(cloudState) ? <div className="mt-1 text-danger">{cloudState}</div> : null}
+        </div>
+      ) : null}
       {confirmDelete ? (
         <div className="mt-2 flex items-center gap-2 text-xs">
           <span>Delete this fact?</span>
@@ -202,9 +239,70 @@ function FactCard({ f }: { f: MemoryFact }) {
   );
 }
 
+function CloudSection({ version }: { version: number }) {
+  const { cloud } = useApp();
+  const [items, setItems] = useState<CloudMemory[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const load = useCallback(async () => {
+    if (!cloud) return;
+    setError(null);
+    try {
+      setItems(await cloud.list());
+    } catch (e) {
+      setItems(null);
+      setError(e instanceof Error ? e.message : 'Cloud memory unavailable');
+    }
+  }, [cloud]);
+  useEffect(() => {
+    void load();
+  }, [load, version]);
+  if (!cloud) return null;
+  return (
+    <section>
+      <SectionTitle action={<Button size="sm" variant="ghost" icon={RefreshCw} onClick={() => void load()}>Sync</Button>}>Cloud memory</SectionTitle>
+      {error ? (
+        <Notice tone="warn" title="Cloud memory unavailable">
+          {error} Local memory still works.
+        </Notice>
+      ) : items === null ? (
+        <div className="font-pixel text-xs text-muted">Loading...</div>
+      ) : items.length === 0 ? (
+        <div className="text-xs text-muted">Nothing saved to the cloud yet. Use "Save to cloud" on a fact.</div>
+      ) : (
+        <ul className="flex flex-col gap-1.5">
+          {items.map((m) => (
+            <li key={m.id} className="flex items-center justify-between gap-2 border-2 border-line bg-surface px-2.5 py-1.5 text-xs">
+              <span className="min-w-0 break-words">
+                <Cloud className="mr-1 inline size-3 text-accent" aria-hidden />
+                {m.key ? <span className="font-semibold">{m.key}: </span> : null}
+                {cloudValue(m)}
+              </span>
+              <Button
+                size="sm"
+                variant="ghost"
+                aria-label="Delete cloud memory"
+                icon={Trash2}
+                onClick={async () => {
+                  try {
+                    await cloud.remove(m.id);
+                    await load();
+                  } catch (e) {
+                    setError(e instanceof Error ? e.message : 'Delete failed');
+                  }
+                }}
+              />
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
 export function MemoryTab() {
   const { facts, vaultState } = useApp();
   const [adding, setAdding] = useState(false);
+  const [cloudVersion, setCloudVersion] = useState(0);
   const groups = new Map<MemoryCategory, MemoryFact[]>();
   for (const f of [...facts].sort((a, b) => a.label.localeCompare(b.label))) {
     groups.set(f.category, [...(groups.get(f.category) ?? []), f]);
@@ -233,11 +331,12 @@ export function MemoryTab() {
           <SectionTitle>{CATEGORY_LABEL[cat]}</SectionTitle>
           <ul className="flex flex-col gap-2">
             {list.map((f) => (
-              <FactCard key={f.key} f={f} />
+              <FactCard key={f.key} f={f} onCloudChange={() => setCloudVersion((v) => v + 1)} />
             ))}
           </ul>
         </section>
       ))}
+      <CloudSection version={cloudVersion} />
     </div>
   );
 }

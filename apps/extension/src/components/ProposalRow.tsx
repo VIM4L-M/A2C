@@ -1,5 +1,5 @@
 import { catalogEntry, validateFormat, type MemoryFact, type Proposal } from '@a2c/shared';
-import { Bookmark, Lock, PenLine, Sparkles } from 'lucide-react';
+import { Bookmark, Cloud, Crosshair, Lock, PenLine, Sparkles } from 'lucide-react';
 import { useId, useState } from 'react';
 import { Badge, Button, Checkbox, cx, SelectInput, StatusPill, TextArea, TextInput } from './ui';
 
@@ -7,16 +7,20 @@ export type SaveCheck = { ok: false; error: string } | { ok: true; needsExtraCon
 
 export interface ProposalRowProps {
   p: Proposal;
-  providerKind: 'gemma' | 'mock';
+  providerKind: 'gemma' | 'specialist' | 'mock';
   draftFacts: MemoryFact[];
   onUpdate: (patch: Partial<Proposal>) => void;
   onDraft?: (keys: string[]) => Promise<void>;
   onUseOnce: (value: string | string[]) => void;
   onSaveCheck: (value: string) => SaveCheck;
   onSaveCommit: (value: string) => Promise<string | null>;
+  /** Present only when cloud memory is enabled. Read-only lookup. */
+  onCloudSearch?: () => Promise<Array<{ id: string; text: string; value: string }>>;
+  /** Scroll to and flash this field on the page. */
+  onLocate?: () => void;
 }
 
-const SOURCE_LABEL = { gemma: 'Gemma 4', mock: 'Mock', rules: 'Rules fallback', user: 'You' } as const;
+const SOURCE_LABEL = { gemma: 'Gemma 4', specialist: 'Specialist', mock: 'Mock', rules: 'Rules fallback', user: 'You' } as const;
 
 function ValueEditor({ p, onChange, id }: { p: Proposal; onChange: (v: string | string[]) => void; id: string }) {
   const { field } = p;
@@ -53,7 +57,16 @@ function ValueEditor({ p, onChange, id }: { p: Proposal; onChange: (v: string | 
     );
   }
   const text = typeof p.value === 'string' ? p.value : '';
-  if (field.kind === 'textarea') return <TextArea id={id} value={text} maxLength={field.maxLength} onChange={(e) => onChange(e.target.value)} />;
+  if (field.kind === 'textarea')
+    return (
+      <div>
+        <TextArea id={id} value={text} maxLength={field.maxLength} onChange={(e) => onChange(e.target.value)} />
+        <div className={cx('mt-0.5 text-right text-[11px]', field.maxLength && text.length > field.maxLength ? 'text-danger' : 'text-muted')}>
+          {text.length}
+          {field.maxLength ? ` / ${field.maxLength}` : ''} characters
+        </div>
+      </div>
+    );
   return (
     <TextInput
       id={id}
@@ -65,7 +78,7 @@ function ValueEditor({ p, onChange, id }: { p: Proposal; onChange: (v: string | 
   );
 }
 
-function DraftPanel({ facts, providerKind, onDraft }: { facts: MemoryFact[]; providerKind: 'gemma' | 'mock'; onDraft: (keys: string[]) => Promise<void> }) {
+function DraftPanel({ facts, providerKind, onDraft }: { facts: MemoryFact[]; providerKind: 'gemma' | 'specialist' | 'mock'; onDraft: (keys: string[]) => Promise<void> }) {
   const [selected, setSelected] = useState(() => new Set(facts.filter((f) => f.permission === 'auto').map((f) => f.key)));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -73,7 +86,7 @@ function DraftPanel({ facts, providerKind, onDraft }: { facts: MemoryFact[]; pro
     <div className="mt-2 rounded-lg border border-line bg-surface-2 p-2.5">
       <div className="text-xs font-medium">Facts that will be shared to write this draft</div>
       <div className="mt-0.5 text-[11px] text-muted">
-        {providerKind === 'gemma' ? 'Sent to your local Gemma proxy only for this draft. Private and secret facts are never included.' : 'MOCK MODE: a local template, not AI. Nothing is sent anywhere.'}
+        {providerKind !== 'mock' ? 'Sent to your A2C backend for Gemma 4, only for this draft. Private and secret facts are never included.' : 'MOCK MODE: a local template, not AI. Nothing is sent anywhere.'}
       </div>
       {facts.length === 0 ? (
         <div className="mt-2 text-xs text-muted">No shareable facts in memory yet.</div>
@@ -114,15 +127,17 @@ function DraftPanel({ facts, providerKind, onDraft }: { facts: MemoryFact[]; pro
           }
         }}
       >
-        {providerKind === 'gemma' ? 'Draft with Gemma 4' : 'Draft (mock template)'}
+        {providerKind !== 'mock' ? 'Draft with Gemma 4' : 'Draft (mock template)'}
       </Button>
     </div>
   );
 }
 
-function MissingPanel({ p, onUseOnce, onSaveCheck, onSaveCommit }: Pick<ProposalRowProps, 'p' | 'onUseOnce' | 'onSaveCheck' | 'onSaveCommit'>) {
+function MissingPanel({ p, onUseOnce, onSaveCheck, onSaveCommit, onCloudSearch }: Pick<ProposalRowProps, 'p' | 'onUseOnce' | 'onSaveCheck' | 'onSaveCommit' | 'onCloudSearch'>) {
   const id = useId();
   const [value, setValue] = useState('');
+  const [cloudHits, setCloudHits] = useState<Array<{ id: string; text: string; value: string }> | null>(null);
+  const [cloudBusy, setCloudBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<{ isPrivate: boolean } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -179,6 +194,43 @@ function MissingPanel({ p, onUseOnce, onSaveCheck, onSaveCommit }: Pick<Proposal
           />
         )}
       </div>
+      {onCloudSearch && !hasOptions ? (
+        <div className="mt-1.5">
+          <Button
+            size="sm"
+            variant="ghost"
+            icon={Cloud}
+            loading={cloudBusy}
+            onClick={async () => {
+              setCloudBusy(true);
+              try {
+                setCloudHits(await onCloudSearch());
+              } catch (e) {
+                setError(e instanceof Error ? e.message : 'Cloud memory unavailable');
+              } finally {
+                setCloudBusy(false);
+              }
+            }}
+          >
+            Search cloud memory
+          </Button>
+          {cloudHits ? (
+            cloudHits.length === 0 ? (
+              <div className="text-[11px] text-muted">No matching cloud memory.</div>
+            ) : (
+              <ul className="mt-1 flex flex-col gap-1">
+                {cloudHits.map((h) => (
+                  <li key={h.id}>
+                    <button type="button" className="w-full border-2 border-line bg-surface px-2 py-1 text-left text-[12px] hover:border-ink" onClick={() => setValue(h.value)}>
+                      {h.text}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )
+          ) : null}
+        </div>
+      ) : null}
       {error ? <div className="mt-1.5 text-xs text-danger">{error}</div> : null}
       {confirm ? (
         <div className="mt-2 rounded-md bg-warn-soft p-2 text-xs">
@@ -236,7 +288,7 @@ function MissingPanel({ p, onUseOnce, onSaveCheck, onSaveCommit }: Pick<Proposal
   );
 }
 
-export function ProposalRow({ p, providerKind, draftFacts, onUpdate, onDraft, onUseOnce, onSaveCheck, onSaveCommit }: ProposalRowProps) {
+export function ProposalRow({ p, providerKind, draftFacts, onUpdate, onDraft, onUseOnce, onSaveCheck, onSaveCommit, onCloudSearch, onLocate }: ProposalRowProps) {
   const id = useId();
   const editable = p.status === 'ready' || p.status === 'review';
   const memLabel = p.memoryKey ? (catalogEntry(p.memoryKey)?.label ?? p.memoryKey) : null;
@@ -271,7 +323,14 @@ export function ProposalRow({ p, providerKind, draftFacts, onUpdate, onDraft, on
               {p.field.label}
               {p.field.required ? <span className="ml-0.5 text-danger">*</span> : null}
             </label>
-            <StatusPill status={p.status} />
+            <span className="flex shrink-0 items-center gap-1">
+              {onLocate ? (
+                <button type="button" className="p-0.5 text-muted hover:text-ink" title="Show this field on the page" aria-label={`Show ${p.field.label} on the page`} onClick={onLocate}>
+                  <Crosshair className="size-3.5" aria-hidden />
+                </button>
+              ) : null}
+              <StatusPill status={p.status} />
+            </span>
           </div>
 
           {p.status === 'blocked' ? (
@@ -311,7 +370,7 @@ export function ProposalRow({ p, providerKind, draftFacts, onUpdate, onDraft, on
             </>
           ) : null}
 
-          {p.status === 'missing' ? <MissingPanel p={p} onUseOnce={onUseOnce} onSaveCheck={onSaveCheck} onSaveCommit={onSaveCommit} /> : null}
+          {p.status === 'missing' ? <MissingPanel p={p} onUseOnce={onUseOnce} onSaveCheck={onSaveCheck} onSaveCommit={onSaveCommit} onCloudSearch={onCloudSearch} /> : null}
         </div>
       </div>
     </li>

@@ -1,17 +1,20 @@
 import { summarize, type ScanResult } from '@a2c/shared';
-import { Globe, KeyRound, RefreshCw, ScanLine, ShieldCheck, Wand2 } from 'lucide-react';
+import { Eye, Gauge, Globe, KeyRound, RefreshCw, ScanLine, ShieldCheck, Undo2, Wand2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { ProposalList } from '../components/ProposalList';
-import { Button, Card, EmptyState, Notice, Stat } from '../components/ui';
+import { Button, Card, EmptyState, Notice, SectionTitle, Stat } from '../components/ui';
 import { useApp } from '../hooks/useApp';
 import { toFillInstructions, useProposals } from '../hooks/useProposals';
-import { fillTab, getActiveTab, parseTabUrl, requestSitePermission, scanTab, TabError, type ActiveTab } from '../services/tabs';
+import { fillTab, getActiveTab, locateOnPage, parseTabUrl, requestSitePermission, scanTab, TabError, undoFill, type ActiveTab } from '../services/tabs';
 
 type Phase = 'idle' | 'scanning' | 'mapping' | 'review' | 'filling';
 
 export function AutofillTab() {
   const app = useApp();
-  const { proposals, info, run, update, refreshForKey, reset, setProposals } = useProposals();
+  const { proposals, info, run, update, refreshForKey, reset, setProposals, skipAI } = useProposals();
+  const [elapsed, setElapsed] = useState(0);
+  const [canUndo, setCanUndo] = useState(false);
+  const [undoMsg, setUndoMsg] = useState<string | null>(null);
   const [phase, setPhase] = useState<Phase>('idle');
   const [currentDomain, setCurrentDomain] = useState<string | null>(null);
   const [scanTabInfo, setScanTabInfo] = useState<ActiveTab | null>(null);
@@ -46,9 +49,19 @@ export function AutofillTab() {
     };
   }, [scanTabInfo]);
 
+  // Elapsed timer while the model works (local CPU inference can take a minute).
+  useEffect(() => {
+    if (phase !== 'mapping') return;
+    setElapsed(0);
+    const t = setInterval(() => setElapsed((e) => e + 1), 1000);
+    return () => clearInterval(t);
+  }, [phase]);
+
   const doScan = useCallback(async () => {
     setError(null);
     setFillSummary(null);
+    setCanUndo(false);
+    setUndoMsg(null);
     setNeedsPermission(null);
     setStale(false);
     setPhase('scanning');
@@ -115,12 +128,31 @@ export function AutofillTab() {
         failed: res.results.filter((r) => r.status === 'failed').length,
       };
       setFillSummary(counts);
+      setCanUndo(counts.filled > 0);
+      setUndoMsg(null);
       await app.record({ type: 'fill', ...counts });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Fill failed');
     } finally {
       setPhase('review');
     }
+  };
+
+  const doUndo = async () => {
+    if (!scan || !scanTabInfo) return;
+    try {
+      const res = await undoFill(scanTabInfo.id, scan.scanId);
+      setProposals((ps) => ps.map((p) => (p.status === 'completed' ? { ...p, status: 'review', note: 'Undone: the previous value was restored' } : p)));
+      setCanUndo(false);
+      setFillSummary(null);
+      setUndoMsg(`Restored ${res.restored} field${res.restored === 1 ? '' : 's'}.${res.notUndoable ? ` ${res.notUndoable} custom choice widget(s) must be changed by hand.` : ''}`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Undo failed');
+    }
+  };
+
+  const locate = (fieldId: string) => {
+    if (scan && scanTabInfo) void locateOnPage(scanTabInfo.id, scan.scanId, fieldId);
   };
 
   const stats = summarize(proposals);
@@ -168,6 +200,21 @@ export function AutofillTab() {
       ) : null}
 
       {error ? <Notice tone="danger">{error}</Notice> : null}
+      {phase === 'mapping' && app.provider.kind !== 'mock' ? (
+        <Notice
+          tone="accent"
+          icon={Gauge}
+          title={`${app.provider.kind === 'specialist' ? 'Specialist' : 'Gemma 4'} is reading the form... ${elapsed}s`}
+          action={
+            <Button size="sm" onClick={skipAI}>
+              Use instant rules instead
+            </Button>
+          }
+        >
+          Local AI on a CPU can take up to a minute. Rescanning the same form later is instant (cached for this session).
+        </Notice>
+      ) : null}
+      {undoMsg ? <Notice tone="ok">{undoMsg}</Notice> : null}
       {stale && scan ? (
         <Notice tone="warn" title="Page changed since the scan" action={<Button size="sm" icon={RefreshCw} onClick={doScan}>Rescan</Button>}>
           Values will not be filled into a different page.
@@ -175,16 +222,16 @@ export function AutofillTab() {
       ) : null}
 
       {info ? (
-        info.source === 'gemma' ? (
-          <Notice tone="ok" icon={Wand2} title="Mapped by Gemma 4">
-            {info.aiFieldCount} field descriptions and memory key names were sent to your local proxy. No memory values were sent.
+        info.source === 'gemma' || info.source === 'specialist' ? (
+          <Notice tone="ok" icon={Wand2} title={info.source === 'gemma' ? 'Mapped by Gemma 4' : 'Mapped by fine-tuned specialist'}>
+            {info.aiFieldCount} field descriptions and memory key names were sent to your A2C backend. No memory values were sent.
           </Notice>
         ) : info.source === 'mock' ? (
           <Notice tone="warn" title="MOCK MODE">
-            Deterministic keyword matching, not AI. Switch to Gemma 4 in Privacy.
+            Deterministic keyword matching, not AI. Switch engines in Settings.
           </Notice>
         ) : (
-          <Notice tone="warn" title="Gemma unavailable: rule-based fallback">
+          <Notice tone="warn" title="AI unavailable: rule-based fallback">
             {info.error} Showing deterministic matches (not AI).
           </Notice>
         )
@@ -203,10 +250,35 @@ export function AutofillTab() {
         </details>
       ) : null}
 
+      {info?.request ? (
+        <details className="border-2 border-line bg-surface px-3 py-2 text-xs">
+          <summary className="cursor-pointer font-semibold">
+            <Eye className="mr-1 inline size-3.5 text-accent" aria-hidden />
+            {info.source === 'mock' ? 'What would be sent to the AI (mock mode sent nothing)' : `Exactly what was sent to the AI${info.cached ? ' (reused from cache, nothing new sent)' : ''}`}
+          </summary>
+          <p className="mt-1.5 text-muted">Field labels, types, options and the names of your memory keys. No values, no page HTML, no blocked fields.</p>
+          <pre className="mt-1.5 max-h-60 overflow-auto bg-surface-2 p-2 text-[11px] leading-snug whitespace-pre-wrap">{JSON.stringify(info.request, null, 1).slice(0, 6000)}</pre>
+        </details>
+      ) : null}
+
       {fillSummary ? (
-        <Notice tone={fillSummary.failed ? 'warn' : 'ok'} title={`Filled ${fillSummary.filled} field${fillSummary.filled === 1 ? '' : 's'}`}>
-          {fillSummary.skipped} skipped, {fillSummary.failed} failed. Review the page and submit it yourself. A2C never submits forms.
-        </Notice>
+        <Card className={fillSummary.failed ? 'border-danger' : ''}>
+          <SectionTitle>Completion summary</SectionTitle>
+          <div className="grid grid-cols-3 gap-1.5">
+            <Stat label="Detected" value={stats.detected} />
+            <Stat label="Filled" value={fillSummary.filled} tone="ok" />
+            <Stat label="Skipped" value={fillSummary.skipped} />
+            <Stat label="Blocked" value={stats.blocked} tone="danger" />
+            <Stat label="Needs you" value={proposals.filter((p) => p.status === 'missing' || p.status === 'unsupported' || ((p.status === 'review' || p.status === 'ready') && !p.approved)).length} tone="warn" />
+            <Stat label="Failed" value={fillSummary.failed} tone={fillSummary.failed ? 'danger' : undefined} />
+          </div>
+          <p className="mt-2 text-xs text-muted">Review the page and submit it yourself. A2C never submits forms.</p>
+          {canUndo ? (
+            <Button className="mt-2" size="sm" icon={Undo2} onClick={doUndo}>
+              Undo this fill
+            </Button>
+          ) : null}
+        </Card>
       ) : null}
 
       {scan && proposals.length === 0 && phase === 'review' ? (
@@ -221,7 +293,7 @@ export function AutofillTab() {
       ) : null}
 
       {proposals.length > 0 ? (
-        <ProposalList proposals={proposals} update={update} refreshForKey={refreshForKey} domain={scanTabInfo?.domain ?? ''} provenance="form_approved" />
+        <ProposalList proposals={proposals} update={update} refreshForKey={refreshForKey} domain={scanTabInfo?.domain ?? ''} provenance="form_approved" onLocate={locate} />
       ) : null}
 
       {proposals.length > 0 ? (

@@ -98,4 +98,5 @@ export const DEMO_PROFILE: Array<{ key: string; value: string }> = [
   { key: 'github_url', value: 'https://github.com/example' },
   { key: 'portfolio_url', value: 'https://example.dev' },
   { key: 'country', value: 'India' },
+  { key: 'current_role', value: 'Student developer' },
 ];

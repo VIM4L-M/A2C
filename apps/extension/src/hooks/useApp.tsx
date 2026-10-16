@@ -5,9 +5,10 @@ import { DEFAULT_SETTINGS, loadSettings, saveSettings, type Settings } from '../
 import { defaultKV, type KV } from '../lib/storage';
 import { prepareFact, type FactCheck, type FactDraft } from '../memory/facts';
 import { MemoryStore } from '../memory/store';
-import { checkHealth, GemmaProvider, MockProvider, type AIProvider, type ProxyHealth } from '../services/ai';
+import { checkStatus, GemmaProvider, MockProvider, type AIProvider, type BackendStatus } from '../services/ai';
+import { CloudMemoryClient } from '../services/cloud';
 
-export type HealthState = ProxyHealth | { status: 'checking' };
+export type HealthState = BackendStatus | { state: 'checking' };
 
 interface AppContextValue {
   ready: boolean;
@@ -29,6 +30,8 @@ interface AppContextValue {
   health: HealthState;
   refreshHealth: (probe?: boolean) => Promise<void>;
   provider: AIProvider;
+  /** Present only when cloud memory is enabled (opt-in). */
+  cloud: CloudMemoryClient | null;
   activity: Activity;
   record: (event: Omit<ActivityEvent, 'at'>) => Promise<void>;
   clearActivity: () => Promise<void>;
@@ -42,7 +45,7 @@ export function AppProvider({ children, kv = defaultKV() }: { children: ReactNod
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   const [facts, setFacts] = useState<MemoryFact[]>([]);
   const [vaultState, setVaultState] = useState<'none' | 'locked' | 'unlocked'>('none');
-  const [health, setHealth] = useState<HealthState>({ status: 'checking' });
+  const [health, setHealth] = useState<HealthState>({ state: 'checking' });
   const [activity, setActivity] = useState<Activity>(EMPTY_ACTIVITY);
 
   const sync = useCallback(() => {
@@ -62,10 +65,10 @@ export function AppProvider({ children, kv = defaultKV() }: { children: ReactNod
 
   const refreshHealth = useCallback(
     async (probe = false) => {
-      setHealth({ status: 'checking' });
-      setHealth(await checkHealth(settings.proxyUrl, probe));
+      setHealth({ state: 'checking' });
+      setHealth(await checkStatus(settings.backendUrl, settings.authToken, probe));
     },
-    [settings.proxyUrl],
+    [settings.backendUrl, settings.authToken],
   );
 
   useEffect(() => {
@@ -154,7 +157,17 @@ export function AppProvider({ children, kv = defaultKV() }: { children: ReactNod
     },
     health,
     refreshHealth,
-    provider: useMemo(() => (settings.aiMode === 'mock' ? new MockProvider() : new GemmaProvider(settings.proxyUrl)), [settings.aiMode, settings.proxyUrl]),
+    provider: useMemo(
+      () =>
+        settings.aiMode === 'mock'
+          ? new MockProvider()
+          : new GemmaProvider(settings.backendUrl, { token: settings.authToken, engine: settings.aiMode }),
+      [settings.aiMode, settings.backendUrl, settings.authToken],
+    ),
+    cloud: useMemo(
+      () => (settings.cloudMemory ? new CloudMemoryClient(settings.backendUrl, { token: settings.authToken }) : null),
+      [settings.cloudMemory, settings.backendUrl, settings.authToken],
+    ),
     activity,
     record,
     clearActivity: async () => {

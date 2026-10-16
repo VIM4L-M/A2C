@@ -92,7 +92,7 @@ export function DocumentsTab() {
   return (
     <div className="flex flex-col gap-3">
       <Card>
-        <SectionTitle>Fill a document locally</SectionTitle>
+        <SectionTitle>Fill a template locally</SectionTitle>
         <p className="text-xs text-muted">
           Supports .docx templates with {'{{placeholder}}'} tags and PDFs with interactive form fields. Only placeholder / field names are sent for mapping, never the
           document content. Files are not stored.
@@ -105,7 +105,7 @@ export function DocumentsTab() {
 
       {error ? <Notice tone="danger">{error}</Notice> : null}
       {done ? <Notice tone="ok" title="Download ready">{done}</Notice> : null}
-      {info && info.source !== 'gemma' ? (
+      {info && info.source !== 'gemma' && info.source !== 'specialist' ? (
         <Notice tone="warn" title={info.source === 'mock' ? 'MOCK MODE' : 'Gemma unavailable: rule-based fallback'}>
           {info.error ? `${info.error} ` : ''}Field names were matched with deterministic rules, not AI.
         </Notice>
@@ -126,7 +126,7 @@ export function DocumentsTab() {
           </div>
         </>
       ) : !error ? (
-        <EmptyState icon={FileText} title="No document loaded">
+        <EmptyState icon={FileText} title="No template loaded">
           Try demo/example-template.docx or demo/example-fillable.pdf from the repository.
         </EmptyState>
       ) : null}
