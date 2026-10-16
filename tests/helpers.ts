@@ -12,6 +12,7 @@ export function field(partial: Partial<ScannedField> & { label: string }): Scann
     kind: 'text',
     hint: '',
     section: '',
+    placeholder: '',
     autocomplete: '',
     required: false,
     multiple: false,

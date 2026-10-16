@@ -43,7 +43,7 @@ const mapBody = {
 const post = (url: string, body: unknown, origin = EXT) =>
   fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', Origin: origin }, body: JSON.stringify(body) });
 
-const fakeClient = (reply: string): GemmaClient => ({ chat: async () => reply, listModels: async () => ({ reachable: true, models: [] }) });
+const fakeClient = (reply: string): GemmaClient => ({ configured: true, model: 'test-model', chat: async () => reply, listModels: async () => ({ reachable: true, models: [] }) });
 
 describe('Gemma proxy', () => {
   it('reports configuration honestly', async () => {

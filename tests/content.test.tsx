@@ -145,6 +145,36 @@ describe('safe autofill engine', () => {
     await act(async () => root.unmount());
   });
 
+  it('never submits the form or clicks buttons', () => {
+    document.body.innerHTML = `
+      <form id="f"><label for="n">Full Name</label><input id="n">
+      <label><input type="radio" name="m" value="r">Remote</label><label><input type="radio" name="m" value="o">Onsite</label>
+      <button id="submit" type="submit">Submit</button><button id="pay" type="button">Pay now</button></form>`;
+    let submits = 0;
+    const clicked: string[] = [];
+    document.getElementById('f')!.addEventListener('submit', (e) => {
+      e.preventDefault();
+      submits += 1;
+    });
+    document.addEventListener('click', (e) => clicked.push((e.target as HTMLElement).id || (e.target as HTMLInputElement).value), true);
+    const { result, state } = scanDocument(document);
+    const name = result.fields.find((f) => f.kind === 'text')!;
+    const radio = result.fields.find((f) => f.kind === 'radio')!;
+    const res = fillApprovedFields(
+      state,
+      result.scanId,
+      ORIGIN,
+      [
+        { fieldId: name.id, value: 'Alex', allowOverwrite: false },
+        { fieldId: radio.id, value: 'o', allowOverwrite: false },
+      ],
+      ORIGIN,
+    );
+    expect(res.every((r) => r.status === 'filled')).toBe(true);
+    expect(submits).toBe(0);
+    expect(clicked).toEqual(['o']); // only the chosen radio input itself
+  });
+
   it('preserves values typed after the scan unless replacement is approved', () => {
     document.body.innerHTML = `<label for="n">Full Name</label><input id="n">`;
     const { result, state } = scanDocument(document);
