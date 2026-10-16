@@ -18,7 +18,10 @@
     "test:watch": "vitest",
     "typecheck": "tsc -p packages/shared --noEmit && tsc -p apps/extension --noEmit && tsc -p apps/server --noEmit && tsc -p tests --noEmit",
     "verify": "npm run typecheck && npm test && npm run build",
-    "icons": "node scripts/make-icons.mjs"
+    "icons": "node scripts/make-icons.mjs",
+    "typecheck:server": "tsc -p packages/shared --noEmit && tsc -p apps/server --noEmit",
+    "token": "node scripts/create-user-token.mjs",
+    "test:training": "python -m unittest discover -s training/tinker/tests -v"
   },
   "engines": {
     "node": ">=20.12"
@@ -28,5 +31,6 @@
     "jsdom": "^29.1.1",
     "typescript": "^7.0.2",
     "vitest": "^5.0.5"
-  }
+  },
+  "type": "module"
 }

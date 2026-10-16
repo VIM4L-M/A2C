@@ -6,8 +6,9 @@ A2C fills web forms and document templates from a personal memory the user contr
 
 1. The user's memory: standard facts (name, college, links, ...) and private facts (phone, city, birth date, grades, ...).
 2. Credentials and payment data on web pages (passwords, OTPs, card data, API keys). A2C must never read, store, transmit or fill these.
-3. The Gemma endpoint and its API key, which live on the local proxy.
-4. The integrity of what gets written into a page or document.
+3. Provider secrets (Gemma API key, Backboard API key, Tinker API key), which live only on the backend or the training machine.
+4. Per-user backend access tokens and each user's cloud memory.
+5. The integrity of what gets written into a page or document.
 
 ## Trust boundaries
 
@@ -17,7 +18,10 @@ A2C fills web forms and document templates from a personal memory the user contr
 | Content script | Trusted code, untrusted input | Runs in the page's isolated world. Reads labels/structure, never sends selectors or HTML out. |
 | Web page text (labels, placeholders, nearby text) | **Untrusted** | Treated as data and possible prompt injection. |
 | Gemma 4 output | **Untrusted** | Only declarative JSON, strictly validated. Cannot override policy. |
-| Local proxy | Trusted, unauthenticated | Binds to 127.0.0.1, restricts Origin and Host. |
+| A2C backend (local) | Trusted | Binds to 127.0.0.1, restricts Origin and Host; single-user mode with no token. |
+| A2C backend (Render) | Trusted, authenticated | Refuses to start publicly without `A2C_USERS` tokens and `ALLOWED_EXTENSION_ORIGIN`. |
+| Backboard.io | Third party | Receives only facts the user explicitly saves to cloud memory. One assistant per user. |
+| Fine-tuned specialist | **Untrusted** output | Single-label answers, validated like Gemma output. |
 | Uploaded DOCX/PDF | Untrusted | Parsed locally; only placeholder / field names go to mapping. |
 
 ## Data flow
@@ -25,13 +29,37 @@ A2C fills web forms and document templates from a personal memory the user contr
 ```
 page DOM --(content script: labels, types, options; no values)--> side panel
 side panel: deterministic classifier (red/amber/gray/green)  <- runs BEFORE any AI call
-side panel --(eligible field labels + memory KEY names, never values)--> local proxy --> Gemma 4
+side panel --(eligible field labels + memory KEY names, never values)--> local backend --> Gemma 4
 Gemma --(JSON mappings)--> proxy (Zod + key/field filtering) --> side panel (Zod + policy engine)
 side panel: resolve values locally, user reviews and approves each field
 side panel --(fieldId + validated value)--> content script --(re-verify, then native setter + events)--> page
 ```
 
 Drafts are the only case where memory values reach the model: the user explicitly ticks which standard (non-private, non-contact) facts are shared for that one draft.
+
+## Authentication and authorization (backend)
+
+- Users are configured as `A2C_USERS=userId:sha256(token),...`; only token hashes are stored server-side. `npm run token -- <userId>` generates a random 192-bit token.
+- The extension sends `Authorization: Bearer <token>`; comparison uses constant-time equality per record.
+- Every AI and memory route requires authentication except `/api/health` (liveness only).
+- Every memory operation is scoped to the authenticated user id, which selects that user's own Backboard assistant. A user cannot address another user's assistant.
+- Rate limits: per IP before auth and per user after auth.
+- Without users configured the server runs in local single-user mode and will only start on a loopback address. A public bind (`0.0.0.0`, Render) without `A2C_USERS` and `ALLOWED_EXTENSION_ORIGIN` exits at startup.
+
+## Cloud memory (Backboard.io)
+
+- Off by default; enabled with an explicit consent checkbox in Privacy.
+- Writes happen only when the user clicks "Save to cloud" on a fact and confirms. Scanning, mapping and filling never write cloud memory.
+- Retrieval uses Backboard's memory search endpoint (read-only), triggered by the user from a missing-information prompt. The query is the field label.
+- The backend rejects credentials, secret-like values, one-time codes and private facts (catalog-private keys, amber custom keys, phone numbers) before calling Backboard. The extension only offers standard, non-contact facts.
+- Isolation: Backboard scopes memory per assistant; A2C creates one assistant per authenticated user (`a2c-memory-<userId>`), never threads under a shared assistant.
+- If Backboard is not configured or unreachable, cloud calls fail with a clear error and local memory keeps working.
+- Users can delete individual cloud memories or all of them from the extension.
+
+## Fine-tuned specialist (Tinker)
+
+- Trained only on synthetic, hand-written form labels (`training/tinker/generate_dataset.py`); no user data, no values, no blocked information.
+- It answers with a single label (memory key, `ask_user` or `skip`) which goes through the same policy engine. It cannot unblock a field.
 
 ## Protections
 
@@ -97,8 +125,11 @@ Counts and timestamps only. No values, labels, domains, documents or submissions
 
 - **Standard facts are not encrypted.** `chrome.storage.local` is plaintext on disk. Only private facts are in the vault.
 - **Unlocked vault exposure.** While unlocked, anything that can run code in the extension or read browser memory can read private facts.
-- **Unauthenticated local proxy.** The Origin and Host checks stop web pages, not other programs on the same computer, which can forge headers and use the configured model (and its API key quota).
-- **Labels go to the model.** Field labels, option labels, section names and memory key names are sent to the configured Gemma endpoint. If that endpoint is remote (e.g. an HF Inference Endpoint), that metadata leaves the machine.
+- **Local single-user mode is unauthenticated.** Origin and Host checks stop web pages, not other programs on the same computer. Configure `A2C_USERS` if that matters, even locally.
+- **Access token at rest.** The backend token is stored in `chrome.storage.local`, which is not encrypted.
+- **Cloud memory leaves the machine.** Facts saved to Backboard are stored by a third party under its terms. Only save what you are comfortable sharing.
+- **Render free tier.** Instances sleep; the first request can be slow. Render does not host the model; `GEMMA_BASE_URL` must be reachable from Render (a local Ollama on your laptop is not).
+- **Labels go to the model.** Field labels, option labels, section names and memory key names are sent to the backend and the configured Gemma endpoint. If that endpoint is remote (e.g. an HF Inference Endpoint), that metadata leaves the machine.
 - **Classification is heuristic.** It is conservative and fails closed for common patterns, but a deliberately obfuscated credential field could be misclassified as amber or green. Values still require user review, and secret-like values are refused on fill.
 - **Prompt injection.** Instruction-like labels are excluded and the model output is constrained, but subtle manipulation of label wording could still bias a mapping. The worst case is a wrong but user-visible suggestion; the model cannot read values, run code or unblock fields.
 - **Coverage.** Iframes (including cross-origin payment iframes) and closed shadow roots are not scanned. Highly custom widgets (div-based selects, contenteditable) are not supported.

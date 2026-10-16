@@ -7,3 +7,5 @@ dist/
 coverage/
 .code-review-graph/
 .DS_Store
+__pycache__/
+*.pyc
