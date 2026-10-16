@@ -42,6 +42,8 @@ export const ScannedFieldSchema = z.strictObject({
   label: z.string().max(200),
   hint: z.string().max(120),
   section: z.string().max(120),
+  /** Sanitized placeholder (format hints like DD/MM/YYYY). Empty for blocked fields. Never sent to the AI. */
+  placeholder: z.string().max(80).default(''),
   autocomplete: z.string().max(60),
   required: z.boolean(),
   multiple: z.boolean(),
@@ -148,7 +150,16 @@ export const ContentRequestSchema = z.discriminatedUnion('type', [
     fills: z.array(FillInstructionSchema).max(300),
   }),
   z.strictObject({ type: z.literal('CF_CLEAR_HIGHLIGHTS') }),
+  z.strictObject({ type: z.literal('CF_UNDO'), scanId: z.string().max(40) }),
+  z.strictObject({ type: z.literal('CF_LOCATE'), scanId: z.string().max(40), fieldId: FieldIdSchema }),
 ]);
+
+export const UndoResponseSchema = z.strictObject({
+  ok: z.boolean(),
+  restored: z.number().int().nonnegative(),
+  notUndoable: z.number().int().nonnegative(),
+  error: z.string().max(200).optional(),
+});
 
 export const FillResultSchema = z.strictObject({
   fieldId: z.string().max(40),
@@ -179,5 +190,6 @@ export type FillInstruction = z.infer<typeof FillInstructionSchema>;
 export type ContentRequest = z.infer<typeof ContentRequestSchema>;
 export type FillResult = z.infer<typeof FillResultSchema>;
 export type FillResponse = z.infer<typeof FillResponseSchema>;
+export type UndoResponse = z.infer<typeof UndoResponseSchema>;
 export type MappingAction = z.infer<typeof MappingActionSchema>;
 export type Transform = z.infer<typeof TransformSchema>;

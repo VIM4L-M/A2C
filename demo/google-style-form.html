@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Campus Ambassador Survey (Google-Forms-style demo)</title>
+    <link rel="stylesheet" href="demo.css" />
+    <style>
+      [role='radio'],
+      [role='checkbox'] {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin: 4px 14px 4px 0;
+        cursor: pointer;
+      }
+      [role='radio']::before,
+      [role='checkbox']::before {
+        content: '';
+        width: 14px;
+        height: 14px;
+        border: 2px solid #555;
+      }
+      [role='radio']::before {
+        border-radius: 50%;
+      }
+      [role='radio'][aria-checked='true']::before,
+      [role='checkbox'][aria-checked='true']::before {
+        background: #3b5bdb;
+      }
+      [role='heading'] {
+        font-weight: 600;
+        margin-bottom: 6px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="card">
+        <h1>Campus Ambassador Survey</h1>
+        <p class="sub">
+          Fictional page built like Google Forms: choices are &lt;div role="radio"&gt; / &lt;div role="checkbox"&gt;, the phone box takes 10 digits, and the date box
+          expects DD/MM/YYYY. Users report most autofill tools fail on exactly these.
+        </p>
+        <div role="list">
+          <div role="listitem" class="row">
+            <div role="heading" id="q1">Your name</div>
+            <input type="text" aria-labelledby="q1" name="entry.1" />
+          </div>
+          <div role="listitem" class="row">
+            <div role="heading" id="q2">Degree</div>
+            <div role="radiogroup" aria-labelledby="q2">
+              <div role="radio" aria-checked="false" tabindex="0" data-value="Bachelor of Technology" aria-label="Bachelor of Technology">Bachelor of Technology</div>
+              <div role="radio" aria-checked="false" tabindex="0" data-value="Bachelor of Science" aria-label="Bachelor of Science">Bachelor of Science</div>
+              <div role="radio" aria-checked="false" tabindex="0" data-value="Master of Technology" aria-label="Master of Technology">Master of Technology</div>
+            </div>
+          </div>
+          <div role="listitem" class="row">
+            <div role="heading" id="q3">Skills</div>
+            <div role="list" aria-labelledby="q3">
+              <div role="checkbox" aria-checked="false" tabindex="0" data-answer-value="Python" aria-label="Python">Python</div>
+              <div role="checkbox" aria-checked="false" tabindex="0" data-answer-value="Java" aria-label="Java">Java</div>
+              <div role="checkbox" aria-checked="false" tabindex="0" data-answer-value="TypeScript" aria-label="TypeScript">TypeScript</div>
+              <div role="checkbox" aria-checked="false" tabindex="0" data-answer-value="React" aria-label="React">React</div>
+            </div>
+          </div>
+          <div role="listitem" class="row">
+            <div role="heading" id="q4">Country</div>
+            <select aria-labelledby="q4" name="entry.4">
+              <option value="">Choose</option>
+              <option value="in">IN</option>
+              <option value="us">US</option>
+              <option value="uk">UK</option>
+            </select>
+          </div>
+          <div role="listitem" class="row">
+            <div role="heading" id="q5">Mobile number</div>
+            <input type="tel" maxlength="10" placeholder="10-digit mobile" aria-labelledby="q5" name="entry.5" />
+          </div>
+          <div role="listitem" class="row">
+            <div role="heading" id="q6">Date of birth</div>
+            <input type="text" placeholder="DD/MM/YYYY" aria-labelledby="q6" name="entry.6" />
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <strong>Live answers</strong>
+        <div class="state" id="state">{}</div>
+      </div>
+    </main>
+    <script>
+      const state = {};
+      const render = () => (document.getElementById('state').textContent = JSON.stringify(state, null, 2));
+      document.querySelectorAll('[role="radio"]').forEach((el) =>
+        el.addEventListener('click', () => {
+          el.parentElement.querySelectorAll('[role="radio"]').forEach((r) => r.setAttribute('aria-checked', 'false'));
+          el.setAttribute('aria-checked', 'true');
+          state.degree = el.dataset.value;
+          render();
+        }),
+      );
+      document.querySelectorAll('[role="checkbox"]').forEach((el) =>
+        el.addEventListener('click', () => {
+          el.setAttribute('aria-checked', el.getAttribute('aria-checked') === 'true' ? 'false' : 'true');
+          state.skills = [...document.querySelectorAll('[role="checkbox"][aria-checked="true"]')].map((c) => c.dataset.answerValue);
+          render();
+        }),
+      );
+      document.querySelectorAll('input, select').forEach((el) =>
+        el.addEventListener('input', () => {
+          state[el.name] = el.value;
+          render();
+        }),
+      );
+    </script>
+  </body>
+</html>

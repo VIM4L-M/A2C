@@ -1,5 +1,5 @@
 import { ContentRequestSchema, type FillResponse } from '@a2c/shared';
-import { fillApprovedFields } from './filler';
+import { fillApprovedFields, locateField, undoLastFill } from './filler';
 import { scanDocument, type ScanState } from './scanner';
 
 /**
@@ -51,6 +51,14 @@ if (!(g.__a2cAlive && g.__a2cAlive())) {
         }
         case 'CF_CLEAR_HIGHLIGHTS':
           sendResponse({ ok: true });
+          break;
+        case 'CF_UNDO': {
+          const { restored, notUndoable } = undoLastFill(state, msg.scanId);
+          sendResponse({ ok: true, restored, notUndoable });
+          break;
+        }
+        case 'CF_LOCATE':
+          sendResponse({ ok: locateField(state, msg.scanId, msg.fieldId) });
           break;
       }
     } catch {

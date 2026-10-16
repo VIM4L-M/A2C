@@ -120,6 +120,35 @@ function squash(s: string): string {
   return normalizeText(s).replace(/ /g, '');
 }
 
+/**
+ * Common equivalent spellings seen on real forms (users report dropdowns left
+ * empty when "B.Tech" is offered as "Bachelor of Technology", "India" as "IN").
+ * Each group lists normalized forms that mean the same thing.
+ */
+const OPTION_ALIASES: string[][] = [
+  ['b tech', 'btech', 'bachelor of technology', 'bachelors of technology'],
+  ['b e', 'be', 'bachelor of engineering'],
+  ['b sc', 'bsc', 'bachelor of science'],
+  ['b a', 'ba', 'bachelor of arts'],
+  ['bca', 'bachelor of computer applications'],
+  ['m tech', 'mtech', 'master of technology'],
+  ['m sc', 'msc', 'master of science', 'ms'],
+  ['mca', 'master of computer applications'],
+  ['mba', 'master of business administration'],
+  ['phd', 'ph d', 'doctorate', 'doctor of philosophy'],
+  ['india', 'in', 'ind', 'bharat'],
+  ['united states', 'us', 'usa', 'united states of america', 'america'],
+  ['united kingdom', 'uk', 'gb', 'great britain'],
+  ['computer science', 'cs', 'cse', 'computer science and engineering', 'computer science engineering'],
+  ['yes', 'y', 'true'],
+  ['no', 'n', 'false'],
+];
+const ALIAS_INDEX = new Map<string, Set<string>>();
+for (const group of OPTION_ALIASES) {
+  const set = new Set(group);
+  for (const g of group) ALIAS_INDEX.set(g, set);
+}
+
 /** Match a memory value to one of the page's real options. */
 export function matchOption(value: string, options: FieldOption[]): FieldOption | undefined {
   const v = normalizeText(value);
@@ -127,6 +156,15 @@ export function matchOption(value: string, options: FieldOption[]): FieldOption 
   if (!v) return undefined;
   const exact = options.find((o) => normalizeText(o.value) === v || normalizeText(o.label) === v || squash(o.label) === vs);
   if (exact) return exact;
+  const aliases = ALIAS_INDEX.get(v) ?? ALIAS_INDEX.get(vs);
+  if (aliases) {
+    const viaAlias = options.filter((o) => {
+      const l = normalizeText(o.label);
+      const inner = (o.label.match(/\(([^)]+)\)/)?.[1] ?? '').trim();
+      return aliases.has(l) || aliases.has(normalizeText(o.value)) || (inner !== '' && aliases.has(normalizeText(inner)));
+    });
+    if (viaAlias.length === 1) return viaAlias[0];
+  }
   const contains = options.filter((o) => {
     const l = normalizeText(o.label);
     const ls = squash(o.label);
@@ -134,6 +172,33 @@ export function matchOption(value: string, options: FieldOption[]): FieldOption 
   });
   if (contains.length === 1) return contains[0];
   return undefined;
+}
+
+const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+/**
+ * Adapt a stored value to what this particular field expects, using only the
+ * field's own constraints (maxlength, placeholder). Users often hit
+ * "+91 98765 43210" in a 10-digit box, or ISO dates in DD/MM/YYYY boxes.
+ */
+export function adaptToField(field: Pick<ScannedField, 'kind' | 'maxLength' | 'placeholder'>, value: string, key: string | null): { value: string; note?: string } {
+  const v = value.trim();
+  const isPhone = field.kind === 'tel' || key === 'phone';
+  if (isPhone && field.maxLength && v.length > field.maxLength) {
+    const digits = v.replace(/\D/g, '');
+    if (digits.length > field.maxLength) return { value: digits.slice(-field.maxLength), note: 'Phone shortened to the local number this field expects' };
+    if (digits.length >= 6) return { value: digits, note: 'Phone reformatted to digits only' };
+  }
+  const iso = v.match(ISO_DATE);
+  if (iso && field.kind !== 'date') {
+    const [, y, m, d] = iso;
+    const ph = (field.placeholder ?? '').toLowerCase().replace(/\s+/g, '');
+    const sep = ph.match(/[/.-]/)?.[0] ?? '/';
+    if (/^dd[/.-]mm[/.-]yyyy$/.test(ph)) return { value: `${d}${sep}${m}${sep}${y}`, note: 'Date reformatted to DD/MM/YYYY' };
+    if (/^mm[/.-]dd[/.-]yyyy$/.test(ph)) return { value: `${m}${sep}${d}${sep}${y}`, note: 'Date reformatted to MM/DD/YYYY' };
+    if (/^yyyy[/.-]mm[/.-]dd$/.test(ph)) return { value: `${y}${sep}${m}${sep}${d}` };
+  }
+  return { value: v };
 }
 
 export function splitList(value: string): string[] {
@@ -298,12 +363,15 @@ export function buildProposals(raw: unknown, ctx: PolicyContext): PolicyResult {
         note = 'No options match your memory';
       }
     } else {
-      const formatError = validateFormat(field.kind, resolved);
+      const adapted = adaptToField(field, resolved, key);
+      value = adapted.value;
+      if (adapted.note) note = adapted.note;
+      const formatError = validateFormat(field.kind, adapted.value);
       if (formatError) {
         needsReview = true;
         note = formatError;
       }
-      if (field.maxLength && resolved.length > field.maxLength) {
+      if (field.maxLength && adapted.value.length > field.maxLength) {
         needsReview = true;
         note = `Longer than the field allows (${field.maxLength})`;
       }

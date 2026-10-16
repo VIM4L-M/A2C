@@ -13,6 +13,7 @@ import {
   signalsFor,
   type Control,
 } from './dom';
+import { ariaChecked, collectAriaGroups, describeAria } from './aria';
 
 /**
  * Scans the page for fillable fields. Each field gets an ephemeral opaque id;
@@ -23,15 +24,19 @@ import {
 export interface RegistryEntry {
   id: string;
   kind: FieldKind;
+  /** Native controls, or ARIA widgets (div role=radio/checkbox) when aria is true. */
   elements: Control[];
   fingerprint: string;
   risk: Classification['risk'];
+  aria?: boolean;
 }
 
 export interface ScanState {
   scanId: string;
   origin: string;
   registry: Map<string, RegistryEntry>;
+  /** Snapshot of what the last fill changed (for Undo). */
+  undo?: import('./filler').UndoRecord[];
 }
 
 const MAX_FIELDS = 300;
@@ -176,6 +181,7 @@ export function scanDocument(root: Document = document): { result: ScanResult; s
       // Blocked fields expose nothing beyond a label and the reason.
       hint: red ? '' : hintFor(first),
       section: red ? '' : sectionFor(first),
+      placeholder: red ? '' : sanitizeLabel(first.getAttribute('placeholder') ?? '', 80),
       autocomplete: red ? '' : (first.getAttribute('autocomplete') ?? '').slice(0, 60),
       required: group.some((g) => g.required),
       multiple: d.kind === 'checkbox' && group.length > 1,
@@ -183,6 +189,31 @@ export function scanDocument(root: Document = document): { result: ScanResult; s
       options: red ? [] : d.options,
       // Never read values of blocked fields.
       hasExistingValue: red ? false : group.some(hasValue),
+      risk: d.classification.risk,
+      riskReason: d.classification.reason,
+      rule: d.classification.rule,
+    });
+  }
+
+  // ARIA widgets (Google Forms and similar): div-based radios and checkboxes.
+  for (const els of collectAriaGroups(root).values()) {
+    if (fields.length >= MAX_FIELDS) break;
+    const d = describeAria(els);
+    const id = randomId('f');
+    const red = d.classification.risk === 'red';
+    registry.set(id, { id, kind: d.kind, elements: els as unknown as Control[], fingerprint: d.fingerprint, risk: d.classification.risk, aria: true });
+    fields.push({
+      id,
+      kind: d.kind,
+      label: d.label || '(unlabelled choice)',
+      hint: '',
+      section: '',
+      placeholder: '',
+      autocomplete: '',
+      required: els.some((e) => e.closest('[aria-required="true"]') !== null),
+      multiple: d.kind === 'checkbox' && els.length > 1,
+      options: red ? [] : d.options,
+      hasExistingValue: red ? false : els.some(ariaChecked),
       risk: d.classification.risk,
       riskReason: d.classification.reason,
       rule: d.classification.rule,
