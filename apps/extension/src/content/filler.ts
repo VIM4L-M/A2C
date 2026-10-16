@@ -169,6 +169,31 @@ export function fillApprovedFields(state: ScanState | null, scanId: string, orig
   return results;
 }
 
+/** Some frameworks publish aria-checked after the click handler returns. Never click twice. */
+export async function fillApprovedFieldsSettled(state: ScanState | null, scanId: string, origin: string, fills: FillInstruction[], getOrigin: () => string): Promise<FillResult[]> {
+  const results = fillApprovedFields(state, scanId, origin, fills, getOrigin());
+  const pending = results.filter((r) => r.status === 'failed' && r.reason === 'Page did not accept the selection');
+  if (!pending.length) return results;
+  for (let attempt = 0; attempt < 20 && pending.length; attempt++) {
+    await new Promise((resolve) => setTimeout(resolve, 25));
+    if (getOrigin() !== origin) return results;
+    for (let i = pending.length - 1; i >= 0; i--) {
+      const result = pending[i]!;
+      const entry = state?.registry.get(result.fieldId);
+      const instruction = fills.find((f) => f.fieldId === result.fieldId);
+      if (!entry?.aria || !instruction || verifyEntry(entry)) continue;
+      const values = Array.isArray(instruction.value) ? instruction.value : [instruction.value];
+      const elements = entry.elements as unknown as HTMLElement[];
+      if (values.every((value) => elements.some((el) => ariaOptionValue(el) === value && ariaChecked(el)))) {
+        result.status = 'filled'; result.reason = '';
+        highlight(elements);
+        pending.splice(i, 1);
+      }
+    }
+  }
+  return results;
+}
+
 /** Restore what the last fill changed. ARIA widgets cannot be reliably reverted and are reported. */
 export function undoLastFill(state: ScanState | null, scanId: string): { restored: number; notUndoable: number } {
   if (!state || state.scanId !== scanId || !state.undo) return { restored: 0, notUndoable: 0 };

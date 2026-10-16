@@ -5,6 +5,7 @@ import { createRoot } from 'react-dom/client';
 import { afterEach, describe, expect, it } from 'vitest';
 import { fillApprovedFields } from '../apps/extension/src/content/filler';
 import { scanDocument } from '../apps/extension/src/content/scanner';
+import { readSelectedAnswer } from '../apps/extension/src/content/learn';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -13,6 +14,27 @@ afterEach(() => {
 });
 
 const ORIGIN = 'https://forms.example.test';
+
+describe('explicit save from page', () => {
+  it('reads only the selected answer and rejects changed origins and scans', () => {
+    document.body.innerHTML = '<label>Name<input name="name" value="Alex Example"></label><label>Password<input type="password"></label>';
+    const { state, result } = scanDocument(document);
+    const name = result.fields.find((f) => f.label === 'Name')!;
+    const password = result.fields.find((f) => f.label === 'Password')!;
+    Object.defineProperty(document.querySelector('input[type=password]'), 'value', { get() { throw new Error('Secret read'); } });
+    expect(readSelectedAnswer(state, state.scanId, ORIGIN, name.id, ORIGIN)).toBe('Alex Example');
+    expect(readSelectedAnswer(state, state.scanId, ORIGIN, password.id, ORIGIN)).toBeNull();
+    expect(readSelectedAnswer(state, 'stale', ORIGIN, name.id, ORIGIN)).toBeNull();
+    expect(readSelectedAnswer(state, state.scanId, ORIGIN, name.id, 'https://other.test')).toBeNull();
+  });
+  it('rechecks fields before reading values when page labels become secret', () => {
+    document.body.innerHTML = '<label for="n">Name</label><input id="n" value="Alex">';
+    const { state, result } = scanDocument(document);
+    document.querySelector('label')!.textContent = 'Password';
+    Object.defineProperty(document.querySelector('input'), 'value', { get() { throw new Error('Secret read'); } });
+    expect(readSelectedAnswer(state, state.scanId, ORIGIN, result.fields[0]!.id, ORIGIN)).toBeNull();
+  });
+});
 
 function byLabel(result: ReturnType<typeof scanDocument>['result'], label: string) {
   const f = result.fields.find((x) => x.label === label);

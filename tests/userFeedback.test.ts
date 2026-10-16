@@ -2,7 +2,7 @@
 // @vitest-environment-options {"url": "https://forms.example.test/survey"}
 import { adaptToField, buildMappingRequest, buildProposals, deterministicMap, matchOption } from '@a2c/shared';
 import { afterEach, describe, expect, it } from 'vitest';
-import { fillApprovedFields, locateField, undoLastFill } from '../apps/extension/src/content/filler';
+import { fillApprovedFields, fillApprovedFieldsSettled, locateField, undoLastFill } from '../apps/extension/src/content/filler';
 import { scanDocument } from '../apps/extension/src/content/scanner';
 import { DEMO_FACTS, fact } from './helpers';
 
@@ -47,6 +47,31 @@ function googleStyleForm() {
 }
 
 describe('custom ARIA choice widgets (Google-Forms style)', () => {
+  it('waits for asynchronous ARIA updates without clicking twice', async () => {
+    document.body.innerHTML = `<div role="radiogroup" aria-label="Preferred participation mode"><div role="radio" aria-label="Online" aria-checked="false"></div><div role="radio" aria-label="In person" aria-checked="false"></div></div>`;
+    let clicks = 0;
+    const option = document.querySelector<HTMLElement>('[aria-label="Online"]')!;
+    option.addEventListener('click', () => { clicks++; setTimeout(() => option.setAttribute('aria-checked', 'true'), 40); });
+    const { result, state } = scanDocument(document);
+    const filled = await fillApprovedFieldsSettled(state, result.scanId, ORIGIN, [{ fieldId: result.fields[0]!.id, value: 'Online', allowOverwrite: false }], () => ORIGIN);
+    expect(filled[0]?.status).toBe('filled');
+    expect(clicks).toBe(1);
+  });
+  it('groups nested option listitems by their labelled answer list', () => {
+    document.body.innerHTML = `<div role="list">
+      <div role="listitem"><div role="heading" id="skills">Technical skills</div>
+        <div role="list" aria-labelledby="skills">
+          <div role="listitem"><label><div role="checkbox" aria-label="Python" aria-checked="false"></div></label></div>
+          <div role="listitem"><label><div role="checkbox" aria-label="React" aria-checked="false"></div></label></div>
+        </div>
+      </div>
+      <div role="listitem"><div role="heading">I accept the terms</div><div role="checkbox" aria-label="Agree" aria-checked="false"></div></div>
+    </div>`;
+    const { result } = scanDocument(document);
+    expect(result.fields).toHaveLength(2);
+    expect(result.fields[0]).toMatchObject({ label: 'Technical skills', risk: 'green', multiple: true, options: [{ value: 'Python' }, { value: 'React' }] });
+    expect(result.fields[1]?.risk).toBe('gray');
+  });
   it('detects div-based radios and checkboxes with their question labels', () => {
     googleStyleForm();
     const { result } = scanDocument(document);

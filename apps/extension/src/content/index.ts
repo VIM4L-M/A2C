@@ -1,6 +1,7 @@
 import { ContentRequestSchema, type FillResponse } from '@a2c/shared';
-import { fillApprovedFields, locateField, undoLastFill } from './filler';
+import { fillApprovedFieldsSettled, locateField, undoLastFill } from './filler';
 import { scanDocument, type ScanState } from './scanner';
+import { readSelectedAnswer } from './learn';
 
 /**
  * Content script entry. Injected on demand (activeTab / granted host) by the
@@ -44,11 +45,15 @@ if (!(g.__a2cAlive && g.__a2cAlive())) {
           break;
         }
         case 'CF_FILL': {
-          const results = fillApprovedFields(state, msg.scanId, msg.origin, msg.fills, location.origin);
-          const response: FillResponse = { ok: true, results };
-          sendResponse(response);
-          break;
+          void fillApprovedFieldsSettled(state, msg.scanId, msg.origin, msg.fills, () => location.origin).then((results) => {
+            const response: FillResponse = { ok: true, results };
+            sendResponse(response);
+          }).catch(() => sendResponse({ ok: false, error: 'content_script_error' }));
+          return true;
         }
+        case 'CF_READ_SELECTED':
+          sendResponse({ ok: true, value: readSelectedAnswer(state, msg.scanId, msg.origin, msg.fieldId, location.origin) });
+          break;
         case 'CF_CLEAR_HIGHLIGHTS':
           sendResponse({ ok: true });
           break;

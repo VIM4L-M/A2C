@@ -143,6 +143,7 @@ export const FillInstructionSchema = z.strictObject({
 export const ContentRequestSchema = z.discriminatedUnion('type', [
   z.strictObject({ type: z.literal('CF_PING') }),
   z.strictObject({ type: z.literal('CF_SCAN') }),
+  z.strictObject({ type: z.literal('CF_READ_SELECTED'), scanId: z.string().max(40), origin: z.string().max(300), fieldId: FieldIdSchema }),
   z.strictObject({
     type: z.literal('CF_FILL'),
     scanId: z.string().max(40),

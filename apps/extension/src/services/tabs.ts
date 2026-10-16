@@ -135,6 +135,11 @@ export async function fillTab(tabId: number, scanId: string, origin: string, fil
   return send(tabId, { type: 'CF_FILL', scanId, origin, fills }, FillResponseSchema);
 }
 
+export async function readSelectedField(tabId: number, scanId: string, origin: string, fieldId: string): Promise<string | null> {
+  const response = await send(tabId, { type: 'CF_READ_SELECTED', scanId, origin, fieldId }, z.object({ ok: z.literal(true), value: z.string().max(2000).nullable() }));
+  return response.value;
+}
+
 export async function undoFill(tabId: number, scanId: string): Promise<UndoResponse> {
   await ensureContentScript(tabId);
   return send(tabId, { type: 'CF_UNDO', scanId }, UndoResponseSchema);

@@ -10,6 +10,17 @@ import { classifyField, sanitizeLabel, type Classification } from '@a2c/shared';
 const SELECTOR = '[role="radio"], [role="checkbox"]';
 const CONTAINER = '[role="radiogroup"], [role="group"], [role="list"], [role="listitem"], fieldset';
 
+function containerFor(el: HTMLElement): Element | null {
+  const nearest = el.closest(CONTAINER);
+  // Google Forms nests each option in a listitem inside the labelled answer list.
+  // Keep the question boundary; never combine unrelated questions in the outer list.
+  if (nearest?.getAttribute('role') === 'listitem' && !nearest.querySelector('[role="heading"]')) {
+    const list = nearest.parentElement?.closest('[role="list"], [role="group"], [role="radiogroup"]');
+    if (list && (list.hasAttribute('aria-labelledby') || list.hasAttribute('aria-label'))) return list;
+  }
+  return nearest;
+}
+
 export interface AriaDescribed {
   kind: 'radio' | 'checkbox';
   elements: HTMLElement[];
@@ -79,7 +90,7 @@ function groupLabel(container: Element | null, first: HTMLElement): string {
 export function collectAriaGroups(root: Document | ShadowRoot = document, depth = 0, out = new Map<Element, HTMLElement[]>()): Map<Element, HTMLElement[]> {
   root.querySelectorAll<HTMLElement>(SELECTOR).forEach((el) => {
     if (!ariaUsable(el)) return;
-    const container = el.closest(CONTAINER) ?? el.parentElement ?? el;
+    const container = containerFor(el) ?? el.parentElement ?? el;
     const list = out.get(container);
     if (list) list.push(el);
     else out.set(container, [el]);
@@ -91,7 +102,7 @@ export function collectAriaGroups(root: Document | ShadowRoot = document, depth 
 export function describeAria(elements: HTMLElement[]): AriaDescribed {
   const first = elements[0]!;
   const kind = first.getAttribute('role') === 'radio' ? 'radio' : 'checkbox';
-  const container = first.closest(CONTAINER);
+  const container = containerFor(first);
   const label = groupLabel(container, first);
   const options = elements.map((el) => ({ value: ariaOptionValue(el), label: ariaOptionLabel(el) }));
   const classification = classifyField({ kind, label, optionLabels: options.map((o) => o.label) });
