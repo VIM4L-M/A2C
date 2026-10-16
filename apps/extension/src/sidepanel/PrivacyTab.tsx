@@ -3,11 +3,12 @@ import { useState } from 'react';
 import { Badge, Button, Card, Checkbox, Notice, SectionTitle, TextInput } from '../components/ui';
 import { useApp } from '../hooks/useApp';
 import { checkPassphrase } from '../memory/vault';
+import { PreferencesCard } from './PreferencesCard';
 
 function CategoriesCard() {
   const rows: Array<[string, 'ok' | 'warn' | 'danger' | 'neutral', string]> = [
     ['Green', 'ok', 'Approved general info (name, education, public links, skills). Pre-ticked when the fact is an "Automatic candidate".'],
-    ['Amber', 'warn', 'Email, phone, address, birth date, grades, salary, IDs, demographic data, essays. Always needs your tick.'],
+    ['Amber', 'warn', 'Contact and private details request approval unless you remember an eligible site decision. Drafts, edits and overwrites still need review.'],
     ['Red', 'danger', 'Passwords, OTPs, CVV, card and bank numbers, tokens, private keys, recovery codes. Never read, stored, sent or filled.'],
     ['Gray', 'neutral', 'Unknown, CAPTCHA, signatures, legal declarations, instruction-like labels, unsupported controls. You fill these.'],
   ];
@@ -220,6 +221,7 @@ export function PrivacyTab() {
         Only field labels, types, option labels and memory key names, sent to your A2C backend for Gemma. Your values are resolved on this device.
       </Notice>
       <CategoriesCard />
+      <PreferencesCard />
       <CloudCard />
       <VaultCard />
       <StorageCard />

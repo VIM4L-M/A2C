@@ -7,24 +7,24 @@
  * a small fixed palette, pixel font for headings/controls, plain body text.
  */
 :root {
-  --cf-bg: #f1ede2;
-  --cf-surface: #fffdf6;
-  --cf-surface-2: #e9e3d3;
-  --cf-line: #d3cbb7;
-  --cf-ink: #1c1b19;
-  --cf-muted: #5f594f;
-  --cf-accent: #2f5bd3;
-  --cf-accent-ink: #ffffff;
-  --cf-accent-soft: #dfe6fb;
-  --cf-ok: #2a7a3f;
-  --cf-ok-soft: #dcefd9;
-  --cf-warn: #8a5a00;
-  --cf-warn-soft: #f7e7bf;
-  --cf-danger: #b3261e;
-  --cf-danger-soft: #f6dad6;
-  --cf-neutral: #55504a;
-  --cf-neutral-soft: #e4dfd3;
-  color-scheme: light;
+  --cf-bg: #121212;
+  --cf-surface: #1c1c1c;
+  --cf-surface-2: #262626;
+  --cf-line: #3a3a3a;
+  --cf-ink: #f2eee4;
+  --cf-muted: #b8b5ad;
+  --cf-accent: #eeeae0;
+  --cf-accent-ink: #151515;
+  --cf-accent-soft: #303030;
+  --cf-ok: #7fd08d;
+  --cf-ok-soft: #1b2e1f;
+  --cf-warn: #f0c060;
+  --cf-warn-soft: #34290f;
+  --cf-danger: #ff8a80;
+  --cf-danger-soft: #3a1c1a;
+  --cf-neutral: #bdb7aa;
+  --cf-neutral-soft: #2a2826;
+  color-scheme: dark;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -35,9 +35,9 @@
     --cf-line: #3a3a3a;
     --cf-ink: #f2eee4;
     --cf-muted: #a8a294;
-    --cf-accent: #7d9cff;
-    --cf-accent-ink: #0d1021;
-    --cf-accent-soft: #1e2645;
+    --cf-accent: #eeeae0;
+    --cf-accent-ink: #151515;
+    --cf-accent-soft: #303030;
     --cf-ok: #7fd08d;
     --cf-ok-soft: #1b2e1f;
     --cf-warn: #f0c060;
@@ -87,6 +87,8 @@ body,
 body {
   margin: 0;
   background: var(--cf-bg);
+  background-image: linear-gradient(#ffffff06 1px, transparent 1px), linear-gradient(90deg, #ffffff06 1px, transparent 1px);
+  background-size: 20px 20px;
   color: var(--cf-ink);
   font-family: var(--font-sans);
   font-size: 13px;

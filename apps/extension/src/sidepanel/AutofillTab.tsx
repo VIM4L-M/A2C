@@ -5,6 +5,9 @@ import { ProposalList } from '../components/ProposalList';
 import { Button, Card, EmptyState, Notice, SectionTitle, Stat } from '../components/ui';
 import { useApp } from '../hooks/useApp';
 import { toFillInstructions, useProposals } from '../hooks/useProposals';
+import { applyPreferences } from '../lib/preferences';
+import { SiteApproval } from './PreferencesCard';
+import { SavePageAnswer } from './SavePageAnswer';
 import { fillTab, getActiveTab, locateOnPage, parseTabUrl, requestSitePermission, requestWebPermission, scanTab, TabError, undoFill, type ActiveTab } from '../services/tabs';
 
 type Phase = 'idle' | 'scanning' | 'mapping' | 'review' | 'filling';
@@ -14,7 +17,7 @@ const HIDDEN_SITE = 'This tab (address shown after scan)';
 
 export function AutofillTab() {
   const app = useApp();
-  const { proposals, info, run, update, refreshForKey, reset, setProposals, skipAI } = useProposals();
+  const { proposals: rawProposals, info, run, update, refreshForKey, reset, setProposals, skipAI } = useProposals();
   const [elapsed, setElapsed] = useState(0);
   const [canUndo, setCanUndo] = useState(false);
   const [undoMsg, setUndoMsg] = useState<string | null>(null);
@@ -22,6 +25,7 @@ export function AutofillTab() {
   const [currentDomain, setCurrentDomain] = useState<string | null>(null);
   const [scanTabInfo, setScanTabInfo] = useState<ActiveTab | null>(null);
   const [scan, setScan] = useState<ScanResult | null>(null);
+  const proposals = applyPreferences(rawProposals, app.facts, app.settings, scan?.origin ?? '');
   const [error, setError] = useState<string | null>(null);
   const [needsPermission, setNeedsPermission] = useState<string | null>(null);
   const [stale, setStale] = useState(false);
@@ -184,7 +188,7 @@ export function AutofillTab() {
         </div>
         {scan ? (
           <div className="mt-3 grid grid-cols-4 gap-1.5">
-            <Stat label="Detected" value={stats.detected} />
+            <Stat label="Detected" value={scan?.fields.length ?? stats.detected} />
             <Stat label="Ready" value={stats.ready} tone="ok" />
             <Stat label="Approval" value={stats.review + stats.missing} tone="warn" />
             <Stat label="Blocked" value={stats.blocked} tone="danger" />
@@ -235,7 +239,7 @@ export function AutofillTab() {
             </Button>
           }
         >
-          Local AI on a CPU can take up to a minute. Rescanning the same form later is instant (cached for this session).
+          Local AI on a CPU can take several minutes. You can use instant rules now; successful model results are cached for this session.
         </Notice>
       ) : null}
       {undoMsg ? <Notice tone="ok">{undoMsg}</Notice> : null}
@@ -317,8 +321,12 @@ export function AutofillTab() {
       ) : null}
 
       {proposals.length > 0 ? (
+        <SiteApproval proposals={proposals} origin={scan?.origin ?? ''} approve={(ids) => ids.forEach((id) => update(id, { approved: true }))} />
+      ) : null}
+      {proposals.length > 0 ? (
         <ProposalList proposals={proposals} update={update} refreshForKey={refreshForKey} domain={scanTabInfo?.domain ?? ''} provenance="form_approved" onLocate={locate} />
       ) : null}
+      {scan && scanTabInfo && !stale && phase === 'review' ? <SavePageAnswer key={scan.scanId} proposals={proposals} scan={scan} tabId={scanTabInfo.id} /> : null}
 
       {proposals.length > 0 ? (
         <div className="sticky bottom-0 -mx-3 flex gap-2 border-t border-line bg-bg/95 px-3 py-2.5 backdrop-blur">

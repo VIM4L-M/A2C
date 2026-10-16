@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Badge, Button, Card, EmptyState, FieldLabel, Notice, SectionTitle, SelectInput, TextArea, TextInput } from '../components/ui';
 import { useApp } from '../hooks/useApp';
 import { canSyncToCloud, cloudValue, type CloudMemory } from '../services/cloud';
+import { ContextImport } from './ContextImport';
 
 const CATEGORY_LABEL: Record<MemoryCategory, string> = {
   identity: 'Identity',
@@ -24,6 +25,8 @@ const PERMISSION_LABEL: Record<MemoryPermission, string> = {
 function provenanceText(f: MemoryFact): string {
   const when = new Date(f.provenance.updatedAt).toLocaleDateString();
   switch (f.provenance.source) {
+    case 'notes_approved': return `Confirmed from notes · ${when}`;
+    case 'chatgpt_approved': return `Confirmed from ChatGPT paste · ${when}`;
     case 'form_approved':
       return `Saved from a form${f.provenance.domain ? ` on ${f.provenance.domain}` : ''} · ${when}`;
     case 'document_approved':
@@ -122,7 +125,7 @@ function FactEditor({ initial, onDone }: { initial?: MemoryFact; onDone: () => v
         {error ? <div className="text-xs text-danger">{error}</div> : null}
         {confirm ? (
           <Notice tone="warn" title="This is sensitive information" action={<div className="flex gap-2"><Button size="sm" variant="primary" loading={busy} onClick={() => save(true)}>Confirm save</Button><Button size="sm" variant="ghost" onClick={() => setConfirm(false)}>Cancel</Button></div>}>
-            It will need your approval every time it is used on a form.
+            It requires approval unless you explicitly remember a fill permission for that website. Saving does not permit external sharing.
           </Notice>
         ) : (
           <div className="flex gap-2">
@@ -337,6 +340,7 @@ export function MemoryTab() {
         </section>
       ))}
       <CloudSection version={cloudVersion} />
+      <ContextImport />
     </div>
   );
 }

@@ -15,12 +15,12 @@ interface Props {
 
 /** Facts that may be offered for drafting: standard, usable, not contact details. */
 function draftable(facts: MemoryFact[]): MemoryFact[] {
-  return facts.filter((f) => f.sensitivity === 'standard' && f.permission !== 'never' && f.category !== 'contact' && f.value.trim());
+  return facts.filter((f) => f.verified !== false && f.sensitivity === 'standard' && f.permission !== 'never' && f.category !== 'contact' && f.value.trim());
 }
 
 export function ProposalList({ proposals, update, refreshForKey, domain, provenance, onLocate }: Props) {
-  const { facts, checkFact, commitFact, lockedKeys, provider, vaultState, cloud } = useApp();
-  const draftFacts = draftable(facts);
+  const { facts, checkFact, commitFact, lockedKeys, provider, vaultState, cloud, settings } = useApp();
+  const draftFacts = draftable(facts).filter((f) => !settings.disabledCategories.includes(f.category));
 
   const saveCheck = (p: Proposal, value: string): SaveCheck => {
     const check = checkFact({ key: p.missingKey ?? '', label: p.missingLabel, value, source: provenance, domain });

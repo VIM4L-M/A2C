@@ -5,6 +5,7 @@ import { ProposalList } from '../components/ProposalList';
 import { Button, Card, EmptyState, Notice, SectionTitle } from '../components/ui';
 import { useApp } from '../hooks/useApp';
 import { toFillInstructions, useProposals } from '../hooks/useProposals';
+import { applyPreferences } from '../lib/preferences';
 
 interface LoadedDoc {
   name: string;
@@ -15,7 +16,8 @@ interface LoadedDoc {
 
 export function DocumentsTab() {
   const app = useApp();
-  const { proposals, info, run, update, refreshForKey, reset } = useProposals();
+  const { proposals: rawProposals, info, run, update, refreshForKey, reset } = useProposals();
+  const proposals = applyPreferences(rawProposals, app.facts, app.settings, DOCUMENT_ORIGIN);
   const [doc, setDoc] = useState<LoadedDoc | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
