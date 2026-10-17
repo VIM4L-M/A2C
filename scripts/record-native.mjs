@@ -86,7 +86,7 @@ const browserArgs = [
   '--no-default-browser-check',
   '--disable-sync',
   '--test-type',
-  `${BASE}/internship-application.html`,
+  `${BASE}/landing.html`,
 ];
 if (await up(`http://localhost:${CDP_PORT}/json/version`)) throw new Error(`Port ${CDP_PORT} is already in use: close the other test browser first.`);
 const quoted = browserArgs.map((a) => `'${a.replace(/'/g, "''")}'`).join(',');
@@ -96,7 +96,7 @@ const browser = await chromium.connectOverCDP(`http://localhost:${CDP_PORT}`);
 const ctx = browser.contexts()[0];
 let formPage;
 for (let i = 0; i < 40 && !formPage; i += 1) {
-  formPage = ctx.pages().find((p) => p.url().includes('internship-application'));
+  formPage = ctx.pages().find((p) => p.url().includes('landing.html'));
   if (!formPage) await sleep(250);
 }
 await formPage.bringToFront();
@@ -181,7 +181,82 @@ async function ensurePanel() {
   await locatePanel();
 }
 
+async function smoothScroll(page, to, ms) {
+  await page.evaluate(
+    ([target, dur]) =>
+      new Promise((resolve) => {
+        const from = window.scrollY;
+        const t0 = performance.now();
+        const step = (now) => {
+          const t = Math.min(1, (now - t0) / dur);
+          const e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+          window.scrollTo(0, from + (target - from) * e);
+          if (t < 1) requestAnimationFrame(step);
+          else resolve();
+        };
+        requestAnimationFrame(step);
+      }),
+    [to, ms],
+  );
+}
+const FORM_URL = `${BASE}/internship-application.html`;
+
 // ---- scenes ---------------------------------------------------------------------------------------------------
+// ===== Part 1: the website. Landing page with its scroll tour, then the workspace pages. =====
+await caption('Page 1: The A2C website. It fills forms with your permission and never submits them.');
+await sleep(3500);
+const tour = await formPage.evaluate(() => {
+  const l = document.querySelector('[data-launch]');
+  return { top: l.offsetTop, span: l.offsetHeight - window.innerHeight };
+});
+for (const [p, text, ms] of [
+  [0.12, 'Product tour: scrolling zooms into a form you have filled a hundred times.', 4200],
+  [0.5, 'A2C reads labels, never values, and fills only facts you confirmed.', 5200],
+  [0.72, 'Sensitive fields wait for approval. Passwords never fill.', 3800],
+  [0.98, 'Zoom out: a website, an extension and one profile.', 4200],
+]) {
+  await smoothScroll(formPage, tour.top + tour.span * p, ms);
+  await caption(text);
+  await sleep(1800);
+}
+for (const [sel, text] of [
+  ['#how', 'How it works: detect, propose, ask permission, fill. You press Submit.'],
+  ['#app', 'The workspace shows your profile and real usage numbers (these are sample data).'],
+  ['#privacy', 'Privacy by design: local by default, permissions per site.'],
+  ['#demo', 'Working demo forms to try, and the developer install steps.'],
+]) {
+  await formPage.evaluate((q) => document.querySelector(q).scrollIntoView({ behavior: 'smooth' }), sel);
+  await caption(text);
+  await sleep(3400);
+}
+await smoothScroll(formPage, 0, 1500);
+await caption('Open the workspace from the website.');
+await sleep(1500);
+await formPage.getByRole('link', { name: /Open workspace/ }).first().click();
+await formPage.waitForURL(/workspace\.html/);
+await sleep(1200);
+for (const [name, text] of [
+  ['Account', 'Page 2: Account. Create your account here; the extension connects to it.'],
+  ['Overview', 'Page 3: Overview. Real usage numbers appear once the extension is connected.'],
+  ['Getting started', 'Page 4: Getting started. Install, add context, try a practice form.'],
+  ['Your profile', 'Page 5: Your profile. Add, edit, confirm and delete facts.'],
+  ['Imports & answers', 'Page 6: Imports and answers. Reviewed text, PDF and ChatGPT paste import.'],
+  ['Privacy', 'Page 7: Privacy. Category switches, vault and saved site permissions.'],
+  ['Settings', 'Page 8: Settings. Honest storage and connection status.'],
+]) {
+  await formPage.getByRole('navigation', { name: 'Workspace pages' }).getByRole('link', { name, exact: true }).click();
+  await sleep(700);
+  await caption(text);
+  await sleep(2400);
+  await smoothScroll(formPage, 700, 1400);
+  await sleep(900);
+  await smoothScroll(formPage, 0, 1000);
+  await sleep(500);
+}
+
+// ===== Part 2: a real form and the extension, opened from the browser toolbar. =====
+await formPage.goto(FORM_URL);
+await sleep(1200);
 await caption('A normal website with a form. Open A2C from the browser toolbar.');
 await sleep(2800);
 input('move', Math.round(LW / 2), 300, 900);
@@ -323,7 +398,17 @@ await sleep(3500);
 await openTab('Privacy');
 await caption('Privacy: the saved site permission is listed and can be revoked at any time.');
 await sleep(3500);
-await caption('Done. This was the real browser, the real toolbar icon and the real side panel.');
+await site.bringToFront();
+await site.goto(`${BASE}/workspace/workspace.html#dashboard`);
+await sleep(1500);
+await caption('Back in the workspace: the account you created greets you on the Overview.', site);
+await sleep(3500);
+await site.goto(`${BASE}/workspace/workspace.html#profile`);
+await sleep(1200);
+await caption('Your profile now holds the confirmed facts from the account, plus the ones imported from notes.', site);
+await sleep(3500);
+await formPage.bringToFront();
+await caption('Done. Website, account, extension and fill: all in the real browser.');
 await sleep(2500);
 
 // ---- finish ----------------------------------------------------------------------------------------------------
