@@ -22,7 +22,8 @@
     "typecheck:server": "tsc -p packages/shared --noEmit && tsc -p apps/server --noEmit",
     "token": "node scripts/create-user-token.mjs",
     "test:training": "python -m unittest discover -s training/tinker/tests -v",
-    "demo:video": "node scripts/record-walkthrough.mjs"
+    "demo:video": "node scripts/record-walkthrough.mjs",
+    "demo:native": "node scripts/record-native.mjs"
   },
   "engines": {
     "node": ">=20.12"
