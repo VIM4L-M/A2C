@@ -31,7 +31,7 @@ export function HomeTab({ onGo }: { onGo: (target: HomeTarget) => void }) {
     <div className="flex flex-col gap-3">
       <Card>
         <div className="text-[11px] tracking-wide text-muted uppercase">Welcome back</div>
-        <h1 className="font-pixel mt-1 text-2xl leading-tight">{name ? `Hello, ${name.split(' ')[0]}.` : 'Hello, you.'}</h1>
+        <h1 className="font-pixel mt-1 text-2xl leading-tight">{name ? `Hello, ${name.split(' ')[0]}.` : 'Hello.'}</h1>
         <p className="mt-1 text-xs text-muted">Open a form, press Scan Form, review, fill. You always submit it yourself.</p>
         <div className="mt-3 flex flex-wrap gap-2">
           <Button variant="primary" icon={ScanLine} onClick={() => onGo('autofill')}>
