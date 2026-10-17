@@ -118,6 +118,14 @@ Nearby text can only make a field stricter. For red fields the content script do
 - JSON-only POSTs (forces CORS preflight), 64 KB body limit, request schema validation, fixed-window rate limit, `nosniff` and `no-store` headers.
 - Logs contain only method, path, status and duration, never bodies, labels or values.
 
+### Website workspace and account
+
+- The website account is a local profile (name, email, profile type) in the browser that created it. There is no password, no server and no cloud copy. It is plaintext in that browser's storage, like standard facts.
+- The extension accepts messages from exactly one page: `http://127.0.0.1:5174/workspace/workspace.html`, checked against the sender's origin and path, top frame only. Other pages on that origin, including the demo forms, are refused.
+- Nothing is shared until the user enables the connection in the extension. The first-run button enables it for three keys only (`preferred_name`, `email`, `profile_type`) with activity sharing off; that click is the consent and the screen says so.
+- The website can only propose facts. Proposals wait in one pending batch, are limited to standard (non-private) facts, and are saved only after the user presses Confirm in the extension. A second batch is refused until the first is resolved. Passwords, private facts, site permissions and backend tokens never cross this connection.
+- The extension ID in the address (`#account?ext=...`) is accepted only if it matches the 32-letter ID format; it carries no secret.
+
 ### Activity log
 
 Counts and timestamps only. No values, labels, domains, documents or submissions.
