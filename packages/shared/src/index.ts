@@ -9,3 +9,4 @@ export * from './mapping/policy';
 export * from './ai/prompt';
 export * from './ai/mockDraft';
 export * from './ai/specialist';
+export * from './ai/extraction';

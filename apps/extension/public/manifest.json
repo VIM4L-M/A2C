@@ -26,6 +26,7 @@
     "type": "module"
   },
   "permissions": ["activeTab", "scripting", "storage", "sidePanel"],
+  "externally_connectable": { "matches": ["http://127.0.0.1/*"] },
   "optional_host_permissions": ["http://*/*", "https://*/*"],
   "commands": {
     "_execute_action": {

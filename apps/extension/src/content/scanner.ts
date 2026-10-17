@@ -12,6 +12,7 @@ import {
   sectionFor,
   signalsFor,
   type Control,
+  isInput, isTextarea, isSelect,
 } from './dom';
 import { ariaChecked, collectAriaGroups, describeAria } from './aria';
 
@@ -99,7 +100,7 @@ export function describe(elements: Control[]): Described {
     options = inputs.map((m) => ({ value: m.value, label: optionLabelFor(m) }));
   } else {
     label = labelFor(first);
-    if (first instanceof HTMLSelectElement) {
+    if (isSelect(first)) {
       options = Array.from(first.options)
         .filter((o) => o.value !== '' && !o.disabled)
         .slice(0, 100)
@@ -127,7 +128,7 @@ function groupControls(controls: Control[]): { groups: Control[][]; ignored: num
       ignored += 1;
       continue;
     }
-    if (el instanceof HTMLInputElement && (el.type === 'radio' || el.type === 'checkbox')) {
+    if (isInput(el) && (el.type === 'radio' || el.type === 'checkbox')) {
       const scope = el.form?.id || (el.form ? 'form' : 'doc');
       if (!el.name) {
         groups.push([el]);
@@ -149,7 +150,7 @@ function groupControls(controls: Control[]): { groups: Control[][]; ignored: num
   return { groups, ignored };
 }
 
-export function scanDocument(root: Document = document): { result: ScanResult; state: ScanState } {
+export function scanDocument(root: Document = document, depth = 0): { result: ScanResult; state: ScanState } {
   const scanId = randomId('s');
   const origin = root.location?.origin ?? 'null';
   const registry = new Map<string, RegistryEntry>();
@@ -185,7 +186,7 @@ export function scanDocument(root: Document = document): { result: ScanResult; s
       autocomplete: red ? '' : (first.getAttribute('autocomplete') ?? '').slice(0, 60),
       required: group.some((g) => g.required),
       multiple: d.kind === 'checkbox' && group.length > 1,
-      maxLength: !red && !(first instanceof HTMLSelectElement) && first.maxLength > 0 ? first.maxLength : undefined,
+      maxLength: !red && !(isSelect(first)) && first.maxLength > 0 ? first.maxLength : undefined,
       options: red ? [] : d.options,
       // Never read values of blocked fields.
       hasExistingValue: red ? false : group.some(hasValue),
@@ -218,6 +219,24 @@ export function scanDocument(root: Document = document): { result: ScanResult; s
       riskReason: d.classification.reason,
       rule: d.classification.rule,
     });
+  }
+
+  // Only visible same-origin, unsandboxed frames inherit this site's permission.
+  // Keep groups scoped to their document so identical radio names never merge.
+  if (depth < 6) for (const frame of root.querySelectorAll('iframe')) {
+    if (fields.length >= MAX_FIELDS) break;
+    if (frame.hasAttribute('sandbox') || !isVisible(frame as unknown as Control)) continue;
+    try {
+      const child = frame.contentDocument;
+      if (!child || (child.location.origin !== origin && !['about:blank', 'about:srcdoc'].includes(child.URL))) continue;
+      const nested = scanDocument(child, depth + 1);
+      for (const field of nested.result.fields) {
+        if (fields.length >= MAX_FIELDS) break;
+        fields.push(field);
+        registry.set(field.id, nested.state.registry.get(field.id)!);
+      }
+      unsupported += nested.result.stats.unsupported;
+    } catch { /* Cross-origin frames require separate access and are omitted. */ }
   }
 
   return {

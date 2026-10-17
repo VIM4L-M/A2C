@@ -1,5 +1,6 @@
 node_modules/
 dist/
+demo/workspace/
 .env
 .env.*
 !.env.example
@@ -10,3 +11,4 @@ coverage/
 .DS_Store
 __pycache__/
 *.pyc
+output/

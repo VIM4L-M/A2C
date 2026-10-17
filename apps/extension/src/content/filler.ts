@@ -1,6 +1,6 @@
 import { detectSecretValue, type FillInstruction, type FillResult } from '@a2c/shared';
 import { ariaChecked, ariaOptionValue, ariaUsable, describeAria } from './aria';
-import { hasValue, isEditable, isVisible, type Control } from './dom';
+import { hasValue, isEditable, isVisible, activeDocument, isInput, isTextarea, isSelect, type Control } from './dom';
 import { describe, type RegistryEntry, type ScanState } from './scanner';
 
 /**
@@ -20,7 +20,8 @@ export type UndoRecord =
   | { kind: 'aria' };
 
 function setNativeValue(el: TextControl, value: string) {
-  const proto = el instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : el instanceof HTMLSelectElement ? HTMLSelectElement.prototype : HTMLInputElement.prototype;
+  const view = el.ownerDocument.defaultView!;
+  const proto = isTextarea(el) ? view.HTMLTextAreaElement.prototype : isSelect(el) ? view.HTMLSelectElement.prototype : view.HTMLInputElement.prototype;
   const setter = Object.getOwnPropertyDescriptor(proto, 'value')?.set;
   // Native setter bypasses framework value trackers (React controlled inputs).
   if (setter) setter.call(el, value);
@@ -30,7 +31,7 @@ function setNativeValue(el: TextControl, value: string) {
 }
 
 function setChecked(el: HTMLInputElement, checked: boolean) {
-  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'checked')?.set;
+  const setter = Object.getOwnPropertyDescriptor(el.ownerDocument.defaultView!.HTMLInputElement.prototype, 'checked')?.set;
   if (setter) setter.call(el, checked);
   else el.checked = checked;
   el.dispatchEvent(new Event('input', { bubbles: true }));
@@ -56,12 +57,14 @@ function fail(fieldId: string, reason: string): FillResult {
 
 /** Re-verify that the element is still the field the user approved. */
 export function verifyEntry(entry: RegistryEntry): string | null {
+  if (!entry.elements.every(activeDocument)) return 'Frame changed, disappeared or became inaccessible; rescan';
   if (!entry.elements.every((el) => el.isConnected)) return 'Field disappeared from the page; rescan';
   if (entry.aria) {
     const els = entry.elements as unknown as HTMLElement[];
     if (!els.some(ariaUsable)) return 'Field is hidden or disabled now';
     const now = describeAria(els);
     if (now.classification.risk === 'red') return 'Field is now classified as sensitive; not filled';
+    if (now.classification.risk === 'gray' && entry.risk !== 'gray') return 'Field changed and needs manual input';
     if (now.fingerprint !== entry.fingerprint) return 'Field changed since scan; rescan';
     return null;
   }
@@ -78,7 +81,7 @@ function fillAria(entry: RegistryEntry, fieldId: string, values: string[]): Fill
   const wanted = new Set(values);
   const targets = els.filter((el) => wanted.has(ariaOptionValue(el)));
   if (targets.length === 0) return fail(fieldId, 'Option no longer available');
-  if (entry.kind === 'radio' && targets.length > 1) return fail(fieldId, 'Ambiguous option');
+  if ((entry.kind === 'radio' || entry.kind === 'select') && targets.length > 1) return fail(fieldId, 'Ambiguous option');
   for (const el of targets) if (!ariaChecked(el)) el.click();
   if (!targets.every(ariaChecked)) return fail(fieldId, 'Page did not accept the selection');
   highlight(targets);
@@ -205,12 +208,12 @@ export function undoLastFill(state: ScanState | null, scanId: string): { restore
       continue;
     }
     if (rec.kind === 'value') {
-      if (!rec.el.isConnected) continue;
+      if (!rec.el.isConnected || !activeDocument(rec.el)) continue;
       setNativeValue(rec.el, rec.previous);
       restored += 1;
       continue;
     }
-    for (const b of rec.boxes) if (b.el.isConnected && b.el.checked !== b.previous) setChecked(b.el, b.previous);
+    for (const b of rec.boxes) if (b.el.isConnected && activeDocument(b.el) && b.el.checked !== b.previous) setChecked(b.el, b.previous);
     restored += 1;
   }
   state.undo = [];

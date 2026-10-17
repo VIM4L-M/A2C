@@ -36,13 +36,16 @@ export function hostGuard(config: ProxyConfig) {
 
 export function corsGuard(config: ProxyConfig) {
   return (req: Request, res: Response, next: NextFunction) => {
-    const origin = req.headers.origin;
+    // A browser page cannot forge this fallback without a preflight. Always
+    // prioritize its real Origin (including "null"), so the fallback cannot
+    // override a denied website. This is origin filtering, not authentication.
+    const origin = req.headers.origin ?? req.get('X-A2C-Extension-Origin');
     const allowed = isOriginAllowed(origin, config);
     if (allowed && origin) {
       res.setHeader('Access-Control-Allow-Origin', origin);
       res.setHeader('Vary', 'Origin');
       res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-A2C-Extension-Origin');
       res.setHeader('Access-Control-Max-Age', '600');
     }
     if (req.method === 'OPTIONS') {

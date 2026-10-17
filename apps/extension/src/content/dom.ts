@@ -8,6 +8,29 @@ import { normalizeText, sanitizeLabel, type FieldKind, type FieldSignals } from 
 
 export type Control = HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
 
+// Tag checks work across same-origin iframe JavaScript realms.
+export const isInput = (el: Element | undefined): el is HTMLInputElement => el?.tagName === 'INPUT';
+export const isTextarea = (el: Element | undefined): el is HTMLTextAreaElement => el?.tagName === 'TEXTAREA';
+export const isSelect = (el: Element | undefined): el is HTMLSelectElement => el?.tagName === 'SELECT';
+
+/** A retained iframe document must still be the visible, active document. */
+export function activeDocument(el: Element): boolean {
+  let doc = el.ownerDocument;
+  try {
+    for (let depth = 0; depth < 8; depth++) {
+      const view = doc.defaultView;
+      if (!view) return false;
+      if (view === view.top) return true;
+      const frame = view.frameElement as HTMLIFrameElement | null;
+      if (!frame || !frame.isConnected || frame.contentDocument !== doc || !isVisible(frame as unknown as Control)) return false;
+      // A sandboxed frame needs its own consent boundary; do not inherit access.
+      if (frame.hasAttribute('sandbox')) return false;
+      doc = frame.ownerDocument;
+    }
+  } catch { return false; }
+  return false;
+}
+
 const IGNORED_INPUT_TYPES = new Set(['hidden', 'submit', 'button', 'reset', 'image']);
 const TEXTLIKE_INPUT_TYPES: Record<string, FieldKind> = {
   '': 'text',
@@ -21,13 +44,13 @@ const TEXTLIKE_INPUT_TYPES: Record<string, FieldKind> = {
 };
 
 export function isIgnored(el: Control): boolean {
-  return el instanceof HTMLInputElement && IGNORED_INPUT_TYPES.has(el.type.toLowerCase());
+  return isInput(el) && IGNORED_INPUT_TYPES.has(el.type.toLowerCase());
 }
 
 /** Map an element to a supported kind, or 'unsupported' (file, color, range, password...). */
 export function kindOf(el: Control): FieldKind | 'unsupported' {
-  if (el instanceof HTMLTextAreaElement) return 'textarea';
-  if (el instanceof HTMLSelectElement) return el.multiple ? 'unsupported' : 'select';
+  if (isTextarea(el)) return 'textarea';
+  if (isSelect(el)) return el.multiple ? 'unsupported' : 'select';
   const t = (el.getAttribute('type') ?? '').toLowerCase();
   if (t === 'radio') return 'radio';
   if (t === 'checkbox') return 'checkbox';
@@ -122,7 +145,7 @@ export function hintFor(el: Control): string {
 export function signalsFor(el: Control, kind: FieldKind | 'unsupported', label: string, optionLabels?: string[]): FieldSignals {
   return {
     kind,
-    inputType: el instanceof HTMLInputElement ? el.type : el instanceof HTMLTextAreaElement ? 'textarea' : 'select',
+    inputType: isInput(el) ? el.type : isTextarea(el) ? 'textarea' : 'select',
     autocomplete: el.getAttribute('autocomplete') ?? undefined,
     name: el.getAttribute('name') ?? undefined,
     id: el.id || undefined,
@@ -131,7 +154,7 @@ export function signalsFor(el: Control, kind: FieldKind | 'unsupported', label: 
     ariaDescription: byIds(el, el.getAttribute('aria-describedby')) || undefined,
     nearbyText: nearbyTextFor(el),
     inputMode: el.getAttribute('inputmode') ?? undefined,
-    maxLength: el instanceof HTMLSelectElement ? undefined : el.maxLength > 0 ? el.maxLength : undefined,
+    maxLength: isSelect(el) ? undefined : el.maxLength > 0 ? el.maxLength : undefined,
     optionLabels,
   };
 }
@@ -142,7 +165,7 @@ export function isVisible(el: Control): boolean {
   const view = el.ownerDocument.defaultView;
   const style = view?.getComputedStyle(el);
   if (style && (style.display === 'none' || style.visibility === 'hidden' || style.visibility === 'collapse')) return false;
-  const checkable = el instanceof HTMLInputElement && (el.type === 'radio' || el.type === 'checkbox');
+  const checkable = isInput(el) && (el.type === 'radio' || el.type === 'checkbox');
   // Real browsers: use layout. jsdom (tests) has no layout, so these checks are skipped there.
   if (typeof (el as Element & { checkVisibility?: unknown }).checkVisibility === 'function') {
     if (!el.checkVisibility({ visibilityProperty: true } as CheckVisibilityOptions)) return false;
@@ -158,19 +181,19 @@ export function isVisible(el: Control): boolean {
 
 export function isEditable(el: Control): boolean {
   if (el.disabled || el.closest('fieldset[disabled]')) return false;
-  if (!(el instanceof HTMLSelectElement) && el.readOnly) return false;
+  if (!(isSelect(el)) && el.readOnly) return false;
   return true;
 }
 
 export function hasValue(el: Control): boolean {
-  if (el instanceof HTMLSelectElement) {
+  if (isSelect(el)) {
     if (el.selectedIndex < 0 || el.value === '') return false;
     const opt = el.options[el.selectedIndex];
     // An implicit default first option is not a user choice.
     if (el.selectedIndex === 0 && opt && !opt.hasAttribute('selected')) return false;
     return true;
   }
-  if (el instanceof HTMLInputElement && (el.type === 'radio' || el.type === 'checkbox')) return el.checked;
+  if (isInput(el) && (el.type === 'radio' || el.type === 'checkbox')) return el.checked;
   return el.value.trim() !== '';
 }
 

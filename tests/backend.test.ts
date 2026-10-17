@@ -78,6 +78,17 @@ const call = (url: string, method: string, token?: string, body?: unknown) =>
   });
 
 describe('Render / production startup guard', () => {
+  it('accepts a privileged extension request without Origin but rejects website spoofing and missing auth', async () => {
+    const url = await start({ A2C_USERS: USERS, ALLOWED_EXTENSION_ORIGIN: EXT });
+    const headers = { 'X-A2C-Extension-Origin': EXT, Authorization: `Bearer ${TOKENS.alice}` };
+    expect((await fetch(`${url}/api/status`, { headers })).status).toBe(200);
+    expect((await fetch(`${url}/api/status`, { headers: { 'X-A2C-Extension-Origin': EXT } })).status).toBe(401);
+    for (const Origin of ['https://evil.example', 'null']) {
+      expect((await fetch(`${url}/api/status`, { headers: { ...headers, Origin } })).status).toBe(403);
+      expect((await fetch(`${url}/api/status`, { method: 'OPTIONS', headers: { ...headers, Origin } })).status).toBe(403);
+    }
+    expect((await fetch(`${url}/api/status`, { headers: { ...headers, 'X-A2C-Extension-Origin': 'chrome-extension://ponmlkjihgfedcbaponmlkjihgfedcba' } })).status).toBe(403);
+  });
   it('refuses a public bind without users and an extension origin', () => {
     const c = loadConfig({ NODE_ENV: 'production', PORT: '10000' });
     expect(c.host).toBe('0.0.0.0');

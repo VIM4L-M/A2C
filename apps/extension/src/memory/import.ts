@@ -52,9 +52,14 @@ export function parseContext(text: string, mode: 'notes' | 'chatgpt' | 'document
 }
 
 export async function readProfileText(file: File): Promise<string> {
-  if (file.size > 100_000) throw new Error('Text profiles must be smaller than 100 KB.');
+  if (file.size > 5_000_000) throw new Error('Resume files must be smaller than 5 MB.');
   const bytes = new Uint8Array(await file.arrayBuffer());
-  if (bytes.includes(0)) throw new Error('Choose a plain UTF-8 text file. PDF resume parsing is not supported yet.');
+  if (bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46 && bytes[4] === 0x2d) {
+    const { readPdfText } = await import('./pdfText');
+    return readPdfText(bytes);
+  }
+  if (file.size > 100_000) throw new Error('Text profiles must be smaller than 100 KB.');
+  if (bytes.includes(0)) throw new Error('Choose a plain UTF-8 text file or a text-based PDF.');
   try { return new TextDecoder('utf-8', { fatal: true }).decode(bytes); }
   catch { throw new Error('Choose a plain UTF-8 text file.'); }
 }

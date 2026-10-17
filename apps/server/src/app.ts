@@ -5,6 +5,7 @@ import { specialistTarget, type ProxyConfig } from './config';
 import { createChatClient, type GemmaClient } from './gemmaClient';
 import { aiRouter, publicRouter } from './routes/ai';
 import { memoryRouter } from './routes/memory';
+import { extractionRouter } from './routes/extraction';
 import { corsGuard, hostGuard, rateLimit, securityHeaders } from './security';
 
 export interface AppDeps {
@@ -38,6 +39,7 @@ export function createApp(config: ProxyConfig, gemma: GemmaClient, deps: AppDeps
   // Everything below requires an authenticated user (or local single-user mode).
   app.use('/api', authenticate(config), rateLimit(config.rateLimitPerMinute, (_req, res) => `user:${res.locals.userId as string}`));
   app.use('/api', aiRouter(config, gemma, specialist, backboard));
+  app.use('/api', extractionRouter(config, gemma));
   app.use('/api/memory', memoryRouter(backboard));
 
   app.use((_req, res) => {

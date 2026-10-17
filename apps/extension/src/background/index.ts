@@ -1,3 +1,5 @@
+import { workspaceMessage } from '../lib/workspaceBridge';
+import { chromeKV } from '../lib/storage';
 /**
  * Background service worker. Deliberately small: it only wires the toolbar
  * action to the side panel. All scanning/filling is initiated from the side
@@ -12,7 +14,9 @@ chrome.runtime.onStartup.addListener(() => {
   void chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => undefined);
 });
 
-// The extension does not accept messages from web pages or other extensions.
-chrome.runtime.onMessageExternal?.addListener((_msg, _sender, sendResponse) => {
-  sendResponse({ ok: false });
+// Exact local workspace only, with a separate user-controlled sharing grant.
+chrome.runtime.onMessageExternal?.addListener((msg, sender, sendResponse) => {
+  if (sender.id || (sender.frameId !== undefined && sender.frameId !== 0)) { sendResponse({ ok: false, error: 'sender_denied' }); return false; }
+  void workspaceMessage(msg, sender.url, chromeKV).then(sendResponse).catch(() => sendResponse({ ok: false, error: 'connection_failed' }));
+  return true;
 });

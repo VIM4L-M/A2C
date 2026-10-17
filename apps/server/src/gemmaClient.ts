@@ -44,6 +44,7 @@ export function createChatClient(t: ChatTarget, fetchImpl: FetchLike = fetch): G
     try {
       return await fetchImpl(`${t.baseUrl}/chat/completions`, {
         method: 'POST',
+        redirect: 'error',
         headers: headers(),
         body: JSON.stringify(body),
         signal: controller.signal,

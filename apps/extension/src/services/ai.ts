@@ -63,6 +63,10 @@ export class BackendClient {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     const headers: Record<string, string> = {};
+    // Chrome may omit Origin on privileged extension GET requests.
+    if (typeof chrome !== 'undefined' && chrome.runtime?.id) {
+      headers['X-A2C-Extension-Origin'] = `chrome-extension://${chrome.runtime.id}`;
+    }
     if (body !== undefined) headers['Content-Type'] = 'application/json';
     if (this.opts.token) headers.Authorization = `Bearer ${this.opts.token}`;
     let res: Response;

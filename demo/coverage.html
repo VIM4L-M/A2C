@@ -1,0 +1,14 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>A2C coverage validation</title>
+<style>body{font:18px system-ui;max-width:900px;margin:40px auto}iframe{width:100%;height:240px;border:1px solid #888} [role=option]{padding:10px;border:1px solid #888;margin:5px;cursor:pointer}[aria-selected=true]{background:#bde8c5}</style>
+<h1>A2C coverage validation</h1><p>Fictional test data only. This page has no submit action.</p>
+<iframe title="Same-origin profile" src="coverage-frame.html"></iframe>
+<div role="listbox" aria-label="Degree"><div role="option" aria-selected="false">B.Tech</div><div role="option" aria-selected="false">M.Tech</div></div>
+<div id="open"></div><div id="closed"></div>
+<iframe title="Cross-origin profile" src="http://localhost:5174/coverage-frame.html"></iframe>
+<script>
+document.querySelectorAll('[role=option]').forEach(option=>option.addEventListener('click',()=>{
+document.querySelectorAll('[role=option]').forEach(other=>other.setAttribute('aria-selected',String(other===option)));
+}));
+document.querySelector('#open').attachShadow({mode:'open'}).innerHTML='<label>GitHub URL <input type="url"></label>';
+document.querySelector('#closed').attachShadow({mode:'closed'}).innerHTML='<label>Closed-root field <input></label>';
+</script></html>

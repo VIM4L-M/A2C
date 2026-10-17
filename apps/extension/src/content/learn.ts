@@ -1,4 +1,5 @@
 import { detectSecretValue } from '@a2c/shared';
+import { isInput, isTextarea, isSelect } from './dom';
 import { verifyEntry } from './filler';
 import type { ScanState } from './scanner';
 
@@ -9,12 +10,12 @@ export function readSelectedAnswer(state: ScanState | null, scanId: string, orig
   if (!entry || entry.risk === 'red' || entry.risk === 'gray' || entry.aria || verifyEntry(entry)) return null;
   let value: string;
   if (entry.kind === 'checkbox' || entry.kind === 'radio') {
-    value = entry.elements.filter((e) => e instanceof HTMLInputElement && e.checked)
+    value = entry.elements.filter((e) => isInput(e) && e.checked)
       .map((e) => (e as HTMLInputElement).value).join(', ');
   } else {
     const element = entry.elements[0];
-    if (!(element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement || element instanceof HTMLSelectElement)) return null;
-    value = element instanceof HTMLSelectElement ? element.selectedOptions[0]?.textContent ?? '' : element.value;
+    if (!(isInput(element) || isTextarea(element) || isSelect(element))) return null;
+    value = isSelect(element) ? element.selectedOptions[0]?.textContent ?? '' : element.value;
   }
   if (!value.trim() || value.length > 2000 || detectSecretValue(value).secret) return null;
   return value.trim();
