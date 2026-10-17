@@ -214,7 +214,7 @@ function StorageCard() {
   );
 }
 
-export function PrivacyTab() {
+export function PrivacyTab({ showCloud = true }: { showCloud?: boolean }) {
   return (
     <div className="flex flex-col gap-3">
       <Notice tone="accent" icon={Shield} title="What leaves your browser">
@@ -222,7 +222,7 @@ export function PrivacyTab() {
       </Notice>
       <CategoriesCard />
       <PreferencesCard />
-      <CloudCard />
+      {showCloud ? <CloudCard /> : null}
       <VaultCard />
       <StorageCard />
       <DataCard />

@@ -22,8 +22,9 @@ export function Onboarding() {
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not save setup. Try again.'); }
     finally { setBusy(false); }
   };
-  return <div className="flex min-h-full flex-col gap-3 p-3"><Card>
-    <h1 className="font-pixel text-lg">Welcome to A2C</h1>
+  return <div className="flex min-h-full flex-col justify-center gap-6 p-5"><div><div className="app-brand">A2C_</div><p className="mt-2 text-xs text-muted">A little context. Less repetition.</p></div><Card>
+    <div className="mb-3 text-xs text-muted">ONE QUICK STEP · ALL DETAILS OPTIONAL</div>
+    <h1 className="font-pixel text-3xl">Hello, you.</h1>
     <p className="my-3 text-xs text-muted">Start with a few details, or skip them. Add education, documents and privacy preferences later in Memory and Privacy.</p>
     <form className="flex flex-col gap-3" onSubmit={(e) => { e.preventDefault(); void finish(); }}>
       <div><FieldLabel htmlFor="ob-name">Preferred name (optional)</FieldLabel><TextInput id="ob-name" value={name} maxLength={80} onChange={(e) => setName(e.target.value)} /></div>
@@ -32,6 +33,7 @@ export function Onboarding() {
       <p className="text-xs text-muted">Saving these details lets A2C suggest them. You review each fill and submit forms yourself. Email requires approval.</p>
       {error ? <Notice tone="danger">{error}</Notice> : null}
       <Button type="submit" variant="primary" loading={busy}>Start using A2C</Button>
+      <Button variant="ghost" disabled={busy} onClick={() => void updateSettings({ onboarded: true })}>Skip for now</Button>
     </form>
   </Card></div>;
 }

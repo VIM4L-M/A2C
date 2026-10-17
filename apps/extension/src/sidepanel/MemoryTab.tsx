@@ -157,6 +157,7 @@ function FactCard({ f, onCloudChange }: { f: MemoryFact; onCloudChange: () => vo
         <div className="min-w-0">
           <div className="flex items-center gap-1.5 text-[13px] font-medium">
             {f.label}
+            <Badge tone={f.verified === false ? 'warn' : 'ok'}>{f.verified === false ? 'Needs review' : 'Confirmed'}</Badge>
             {f.sensitivity === 'private' ? (
               <Badge tone="warn" icon={Lock}>
                 Private
@@ -302,7 +303,7 @@ function CloudSection({ version }: { version: number }) {
   );
 }
 
-export function MemoryTab() {
+export function MemoryTab({ showImport = true }: { showImport?: boolean }) {
   const { facts, vaultState } = useApp();
   const [adding, setAdding] = useState(false);
   const [cloudVersion, setCloudVersion] = useState(0);
@@ -340,7 +341,7 @@ export function MemoryTab() {
         </section>
       ))}
       <CloudSection version={cloudVersion} />
-      <ContextImport />
+      {showImport ? <ContextImport /> : null}
     </div>
   );
 }

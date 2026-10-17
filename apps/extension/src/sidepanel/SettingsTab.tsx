@@ -4,6 +4,7 @@ import { Badge, Button, Card, FieldLabel, Notice, SectionTitle, StatusRow, TextI
 import { useApp } from '../hooks/useApp';
 import { isAllowedBackendUrl, type AIModeSetting } from '../lib/settings';
 import { ActivityTab } from './ActivityTab';
+import { WorkspaceConnection } from './WorkspaceConnection';
 
 const MODES: Array<{ id: AIModeSetting; title: string; text: string }> = [
   { id: 'gemma', title: 'Gemma 4', text: 'Default. Gemma 4 understands field meanings via the A2C backend.' },
@@ -45,6 +46,7 @@ export function SettingsTab() {
 
   return (
     <div className="flex flex-col gap-3">
+      <WorkspaceConnection />
       <Card>
         <SectionTitle>AI engine</SectionTitle>
         <div className="flex flex-col gap-2">

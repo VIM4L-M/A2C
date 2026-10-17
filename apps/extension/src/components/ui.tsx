@@ -31,7 +31,7 @@ export function Button({
       type="button"
       className={cx(
         'inline-flex items-center justify-center gap-1.5 disabled:cursor-not-allowed disabled:opacity-50',
-        size === 'sm' ? 'h-7 px-2 text-[12px]' : 'h-9 px-3 text-[14px]',
+        size === 'sm' ? 'min-h-8 px-2 py-1 text-[12px]' : 'min-h-11 px-3 py-2 text-[13px]',
         styles[variant],
         className,
       )}
@@ -69,7 +69,7 @@ const TONES: Record<Tone, string> = {
 
 export function Badge({ tone = 'neutral', children, icon: Icon, className }: { tone?: Tone; children: ReactNode; icon?: LucideIcon; className?: string }) {
   return (
-    <span className={cx('font-pixel inline-flex items-center gap-1 border-2 border-current px-1.5 py-px text-[11px] uppercase leading-tight whitespace-nowrap', TONES[tone], className)}>
+    <span className={cx('inline-flex items-center gap-1 rounded-sm border border-current/25 px-1.5 py-1 text-[11px] font-medium leading-tight whitespace-nowrap', TONES[tone], className)}>
       {Icon ? <Icon className="size-3" aria-hidden /> : null}
       {children}
     </span>
@@ -99,7 +99,7 @@ export function StatusPill({ status }: { status: FillStatus }) {
 export function Notice({ tone = 'neutral', title, children, icon, action }: { tone?: Tone; title?: ReactNode; children?: ReactNode; icon?: LucideIcon; action?: ReactNode }) {
   const Icon = icon ?? (tone === 'danger' ? XCircle : tone === 'warn' ? AlertTriangle : tone === 'ok' ? CheckCircle2 : Info);
   return (
-    <div className={cx('flex gap-2.5 border-2 border-current p-3 text-[12.5px]', TONES[tone])} role={tone === 'danger' ? 'alert' : 'status'}>
+    <div className={cx('flex gap-2.5 rounded-md border border-current/30 p-3 text-[12.5px]', TONES[tone])} role={tone === 'danger' ? 'alert' : 'status'}>
       <Icon className="mt-0.5 size-4 shrink-0" aria-hidden />
       <div className="min-w-0 flex-1 text-ink">
         {title ? <div className="font-pixel text-[14px]">{title}</div> : null}
@@ -113,7 +113,7 @@ export function Notice({ tone = 'neutral', title, children, icon, action }: { to
 const inputBase = 'px-input w-full px-2.5 py-1.5 text-[13px] text-ink placeholder:text-muted/70 disabled:opacity-60';
 
 export function TextInput(props: InputHTMLAttributes<HTMLInputElement>) {
-  return <input {...props} className={cx(inputBase, 'h-8', props.className)} />;
+  return <input {...props} className={cx(inputBase, 'min-h-10', props.className)} />;
 }
 
 export function TextArea(props: TextareaHTMLAttributes<HTMLTextAreaElement>) {
@@ -121,7 +121,7 @@ export function TextArea(props: TextareaHTMLAttributes<HTMLTextAreaElement>) {
 }
 
 export function SelectInput(props: SelectHTMLAttributes<HTMLSelectElement>) {
-  return <select {...props} className={cx(inputBase, 'h-8 pr-6', props.className)} />;
+  return <select {...props} className={cx(inputBase, 'min-h-10 pr-6', props.className)} />;
 }
 
 export function FieldLabel({ children, htmlFor, hint }: { children: ReactNode; htmlFor?: string; hint?: ReactNode }) {
@@ -144,7 +144,7 @@ export function Checkbox({ checked, onChange, label, disabled, id }: { checked: 
 
 export function Stat({ label, value, tone }: { label: string; value: number | string; tone?: Tone }) {
   return (
-    <div className="border-2 border-ink bg-surface px-2 py-1.5">
+    <div className="rounded-md border border-line bg-surface px-2 py-3">
       <div className={cx('font-pixel text-xl leading-none tabular-nums', tone === 'ok' && 'text-ok', tone === 'warn' && 'text-warn', tone === 'danger' && 'text-danger', tone === 'accent' && 'text-accent')}>{value}</div>
       <div className="mt-1 text-[11px] text-muted">{label}</div>
     </div>

@@ -34,7 +34,7 @@ export function engineLabel(mode: 'gemma' | 'specialist' | 'mock', health: Healt
 }
 
 export function App() {
-  const { ready, settings, health } = useApp();
+  const { ready, settings, health, facts } = useApp();
   const [tab, setTab] = useState<TabId>('autofill');
 
   if (!ready) return <div className="font-pixel p-4 text-muted">Loading...</div>;
@@ -43,13 +43,12 @@ export function App() {
 
   return (
     <div className="flex min-h-full flex-col">
-      <header className="sticky top-0 z-10 border-b-2 border-ink bg-bg">
+      <header className="app-header sticky top-0 z-10 border-b border-line">
         <div className="flex items-center justify-between px-3 pt-3 pb-2">
           <div className="flex items-center gap-2">
-            <div className="font-pixel grid h-8 place-items-center border-2 border-ink bg-accent px-1.5 text-[15px] text-accent-ink shadow-[2px_2px_0_0_var(--cf-ink)]">A2C</div>
+            <div className="app-brand" aria-label="A2C">A2C_</div>
             <div>
-              <div className="font-pixel text-[15px] leading-tight">Advanced Action Critic</div>
-              <div className="text-[11px] leading-tight text-muted">Your memory. Any form. Automatically completed.</div>
+              <div className="text-[11px] leading-tight text-muted">Your memory.<br />Your permission.</div>
             </div>
           </div>
           <Badge tone={engine.tone}>{engine.text}</Badge>
@@ -62,8 +61,8 @@ export function App() {
               aria-current={tab === id ? 'page' : undefined}
               onClick={() => setTab(id)}
               className={cx(
-                'font-pixel flex flex-1 flex-col items-center gap-0.5 border-2 px-0.5 py-1 text-[11px]',
-                tab === id ? 'border-ink bg-surface text-ink shadow-[2px_2px_0_0_var(--cf-ink)]' : 'border-transparent text-muted hover:text-ink',
+                'flex min-h-12 flex-1 flex-col items-center justify-center gap-1 rounded-md border px-0.5 py-1 text-[11px]',
+                tab === id ? 'border-line bg-surface-2 text-ink' : 'border-transparent text-muted hover:text-ink hover:bg-surface',
               )}
             >
               <Icon className="size-4" aria-hidden />
@@ -76,6 +75,10 @@ export function App() {
         {/* Keep Autofill and Templates mounted so their state survives tab switches. */}
         <div hidden={tab !== 'autofill'}>
           <AutofillTab />
+          <button type="button" onClick={() => setTab('memory')} className="mt-4 flex w-full items-center justify-between gap-3 rounded-md border border-line bg-surface p-3 text-left">
+            <span><span className="block text-sm font-semibold">{facts.length ? 'Your profile' : 'Build your profile'}</span><span className="text-xs text-muted">{facts.length} saved facts · Review and edit in Memory</span></span>
+            <Brain className="size-5 text-muted" aria-hidden />
+          </button>
         </div>
         {tab === 'memory' ? <MemoryTab /> : null}
         <div hidden={tab !== 'templates'}>

@@ -170,9 +170,14 @@ export function AutofillTab() {
   const stats = summarize(proposals);
   const fillCount = toFillInstructions(proposals).length;
   const busy = phase === 'scanning' || phase === 'mapping' || phase === 'filling';
+  const reviewStep = fillSummary || phase === 'filling' ? 2 : proposals.some((p) => p.status === 'review' && !p.approved) ? 1 : 0;
 
   return (
     <div className="flex flex-col gap-3">
+      <div><h1 className="font-pixel text-2xl">Review & fill</h1><p className="mt-1 text-xs text-muted">You choose what goes on the page.</p></div>
+      <ol className="review-steps" aria-label="Fill progress">
+        {['Review', 'Permissions', 'Insert'].map((label, i) => <li key={label} aria-current={reviewStep === i ? 'step' : undefined}><span>{i + 1}</span>{label}</li>)}
+      </ol>
       <Card>
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0">
@@ -311,7 +316,7 @@ export function AutofillTab() {
 
       {scan && proposals.length === 0 && phase === 'review' ? (
         <EmptyState icon={ScanLine} title="No fillable fields found">
-          {scan.stats.ignoredHiddenOrDisabled} hidden/disabled and {scan.stats.unsupported} unsupported fields were ignored. Fields inside iframes are not scanned.
+          {scan.stats.ignoredHiddenOrDisabled} hidden/disabled and {scan.stats.unsupported} unsupported fields were ignored. Cross-origin and sandboxed frames are not scanned.
         </EmptyState>
       ) : null}
       {!scan && phase === 'idle' && !error && !needsPermission ? (
