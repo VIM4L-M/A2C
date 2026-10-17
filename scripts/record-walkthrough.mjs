@@ -82,13 +82,28 @@ async function websitePart() {
   await sleep(1200);
   await caption(page, 'Page 1: Landing. A2C fills forms with your permission, and never submits them.');
   await sleep(3500);
-  for (const [y, text] of [
-    [700, 'How it works: detect, propose, ask permission, fill.'],
-    [1500, 'Your context: facts you confirm, reused across forms.'],
-    [2300, 'Privacy by design: local by default, permissions per site.'],
-    [3300, 'Try the working demo forms, or install the unpacked extension.'],
+  // Scroll through the pinned product tour (zoom in, fill, zoom out), then the content sections.
+  const tour = await page.evaluate(() => {
+    const l = document.querySelector('[data-launch]');
+    return { top: l.offsetTop, span: l.offsetHeight - innerHeight };
+  });
+  for (const [p, text] of [
+    [0.1, 'Zoom in: a form you have filled a hundred times.'],
+    [0.45, 'A2C reads labels, never values, then fills confirmed facts.'],
+    [0.7, 'Sensitive fields wait for approval. Passwords never fill.'],
+    [0.98, 'Zoom out: a website, an extension and one profile.'],
   ]) {
-    await page.evaluate((top) => window.scrollTo({ top, behavior: 'smooth' }), y);
+    await page.evaluate((top) => window.scrollTo({ top, behavior: 'smooth' }), tour.top + tour.span * p);
+    await caption(page, text);
+    await sleep(3600);
+  }
+  for (const [sel, text] of [
+    ['#how', 'How it works: detect, propose, ask permission, fill.'],
+    ['#app', 'The workspace: your profile and real usage numbers.'],
+    ['#privacy', 'Privacy by design: local by default, permissions per site.'],
+    ['#demo', 'Try the working demo forms, or install the unpacked extension.'],
+  ]) {
+    await page.evaluate((q) => document.querySelector(q).scrollIntoView({ behavior: 'smooth' }), sel);
     await caption(page, text);
     await sleep(3200);
   }
@@ -164,7 +179,7 @@ async function extensionPart() {
     await sleep(900);
   };
 
-  await cap('Extension 1/8: First-run onboarding. One short step: name, email, profile type. All optional.');
+  await cap('Extension 1/9: First-run onboarding. One short step: name, email, profile type. All optional.');
   await sleep(2200);
   await panel.getByLabel(/Preferred name/).fill('Alex Example');
   await panel.getByLabel(/^Email/).fill('alex@example.com');
@@ -173,8 +188,12 @@ async function extensionPart() {
   await panel.getByRole('button', { name: 'Start using A2C' }).click();
   await sleep(1500);
 
+  await clickTab('Home');
+  await cap('Extension 2/9: Home. Your usage, a profile checklist and a privacy summary. Counts come from this browser only.');
+  await sleep(3200);
+
   await clickTab('Memory');
-  await cap('Extension 2/8: Memory. Paste notes; A2C proposes facts and YOU confirm each one before it is saved.');
+  await cap('Extension 3/9: Memory. Paste notes; A2C proposes facts and YOU confirm each one before it is saved.');
   const ctxBox = panel.getByLabel('Context to review');
   await ctxBox.scrollIntoViewIfNeeded();
   await ctxBox.fill('College: Example Institute of Technology\nDegree: B.Tech\nMajor: Computer Science\nGraduation year: 2028\nSkills: Python, React, TypeScript\nGitHub: https://github.com/example');
@@ -192,22 +211,22 @@ async function extensionPart() {
   await sleep(1500);
 
   await clickTab('Settings');
-  await cap(MOCK ? 'Extension 3/8: Settings. Mock mode is on and labelled (no AI in this run).' : 'Extension 3/8: Settings. A real connection check: Gemma 4 connected.');
-  if (!MOCK) await panel.getByText('Gemma 4 connected').first().waitFor({ timeout: 60000 }).catch(() => undefined);
+  await cap(MOCK ? 'Extension 4/9: Settings. Mock mode is on and labelled (no AI in this run).' : 'Extension 4/9: Settings. A real connection check. Auto engine: specialist first, Gemma 4 as fallback.');
+  if (!MOCK) await panel.getByText(/Auto: |Gemma 4 connected/).first().waitFor({ timeout: 60000 }).catch(() => undefined);
   await sleep(2600);
 
   await clickTab('Privacy');
-  await cap('Extension 4/8: Privacy. Category switches, saved site permissions, always-manual secrets.');
+  await cap('Extension 5/9: Privacy. Category switches, saved site permissions, always-manual secrets.');
   await sleep(3000);
 
   await clickTab('Autofill');
-  await cap('Extension 5/8: Autofill. Scan the internship form. The password is blocked before any AI sees it.');
+  await cap('Extension 6/9: Autofill. Scan the internship form. The password is blocked before any AI sees it.');
   await sleep(1500);
   await panel.getByRole('button', { name: 'Scan Form' }).click();
-  await fastWait('Gemma 4 reads only the unclear field labels (about 45 s on this CPU).', async () => {
+  await fastWait('The model reads only the unclear field labels. Waiting is fast-forwarded in this video.', async () => {
     await panel.getByText(/Mapped by|Matched instantly|rule-based fallback|MOCK MODE|Instant rules/).first().waitFor({ timeout: 300000 });
   });
-  await cap('Obvious fields were matched by rules; unclear ones by Gemma. The password is BLOCKED.');
+  await cap('Obvious fields were matched by rules; unclear ones by the fine-tuned specialist or Gemma 4. The password is BLOCKED.');
   await sleep(3000);
 
   const remember = panel.getByRole('button', { name: 'Remember for this site' }).first();
@@ -263,7 +282,7 @@ async function extensionPart() {
 
   await panel.bringToFront();
   await clickTab('Templates');
-  await cap('Extension 6/8: Templates. Fill a Word template locally; the file never leaves your browser.');
+  await cap('Extension 7/9: Templates. Fill a Word template locally; the file never leaves your browser.');
   await panel.locator('input[type=file]').setInputFiles(join(ROOT, 'demo/example-template.docx'));
   await panel.getByText('example-template.docx').waitFor({ timeout: 30000 });
   await sleep(2800);
@@ -280,10 +299,10 @@ async function extensionPart() {
   await sleep(2400);
 
   await clickTab('Memory');
-  await cap('Extension 7/8: Memory again. Each fact shows where it came from; the new city is saved.');
+  await cap('Extension 8/9: Memory again. Each fact shows where it came from; the new city is saved.');
   await sleep(3500);
   await clickTab('Privacy');
-  await cap('Extension 8/8: Privacy. The saved site permission is listed and can be revoked at any time.');
+  await cap('Extension 9/9: Privacy. The saved site permission is listed and can be revoked at any time.');
   await panel.evaluate(() => window.scrollTo({ top: 500, behavior: 'smooth' }));
   await sleep(3500);
   await cap('Done. This ran in the real MV3 extension; waiting for Gemma was fast-forwarded.');
@@ -332,11 +351,16 @@ try {
   ff(['-f', 'concat', '-safe', '0', '-i', list, '-c:v', 'libx264', '-crf', '23', '-preset', 'veryfast', '-movflags', '+faststart', finalFile]);
   writeFileSync(
     join(OUT, 'README.txt'),
-    `a2c-walkthrough.mp4\nmode: ${MOCK ? 'MOCK matching (labelled)' : 'real Gemma 4 through the A2C backend'}\nfast-forwarded waits (x${SPEED}): ${e.fast.length}\nside panel shown as a tab, not Chrome's native side-panel container\nlocalhost access pre-granted (native permission dialogs cannot be scripted)\nall data fictional; the form was never submitted\n`,
+    `a2c-walkthrough.mp4\nmode: ${MOCK ? 'MOCK matching (labelled)' : 'real engines through the A2C backend (auto: fine-tuned specialist first, Gemma 4 fallback)'}\nfast-forwarded waits (x${SPEED}): ${e.fast.length}\nside panel shown as a tab, not Chrome's native side-panel container\nlocalhost access pre-granted (native permission dialogs cannot be scripted)\nall data fictional; the form was never submitted\n`,
   );
   log('done:', finalFile);
 } finally {
   for (const p of procs) p.kill();
-  rmSync(work, { recursive: true, force: true });
+  // Chrome may still hold profile files for a moment; a failed cleanup must not hide the real error.
+  try {
+    rmSync(work, { recursive: true, force: true, maxRetries: 8, retryDelay: 500 });
+  } catch {
+    log('temp folder not removed:', work);
+  }
 }
 process.exit(0);

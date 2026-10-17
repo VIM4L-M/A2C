@@ -77,6 +77,22 @@ Onboarding and fictional profile import were completed through the UI. Chrome we
 - PDF resume extraction is deferred; use UTF-8 text. Local notes extraction supports a documented subset of prose and labelled lines, not arbitrary resume understanding.
 - Save-from-page supports native controls; ARIA choice widgets remain unsupported for learning, although filling works. Generated essay fields are excluded from learning reusable facts.
 - The supplied form's alternative Portfolio/LinkedIn wording is ambiguous in the deterministic matcher and required an explicit answer in this run.
-- Live Gemma inference was verified in the follow-up above. Backboard, Render deployment and Tinker fine-tuning were not run in this review.
+- Live Gemma inference was verified in the follow-up above. Backboard and Render were verified separately ([remaining validation](remaining-validation.md)); the Tinker run is recorded below.
 - Exact-origin permissions on docs.google.com apply to that origin across forms, as specified; they are not per-form-URL grants.
 - Iframes, closed shadow roots, custom listbox widgets and scanned PDFs remain outside current support. ARIA changes cannot be reliably undone and are reported as such.
+
+## Fine-tuned specialist and auto engine (17 October 2026)
+
+- **Training.** Tinker LoRA SFT of `Qwen/Qwen3.5-4B` (rank 16, 3 epochs, batch 32, learning rate 2e-4) on 260 synthetic examples. First-batch loss 0.645, last-batch loss near zero. Run record: `training/tinker/runs/latest.json`.
+- **Evaluation.** 63 held-out synthetic labels with wording absent from training (overlap checked by `npm run test:training`). Specialist: 98.4% accuracy, 98.1% memory-key accuracy, 100% credential skip recall, 0 unsafe mappings. Rules: 84.1% / 81.1% / 100% / 0. Gemma 4 E4B zero-shot: 82.5% / 90.6% / 0% / 0. The set is small and synthetic; real-form accuracy is not benchmarked.
+- **Serving.** The specialist runs on Tinker's OpenAI-compatible endpoint through the backend `/api/map?engine=specialist` route, one short completion per field.
+- **Auto engine.** The extension default. The backend tries the specialist, falls back to Gemma 4 if it is unreachable, and reports the answering engine in the `X-A2C-Engine` header. An explicit specialist request never falls back silently. Drafts always use Gemma 4. Output goes through the same schema checks and policy engine in every case. Covered by `tests/backend.test.ts`.
+- **Speed.** Scanning no longer waits on CPU inference for each form. The remaining model time was not benchmarked end to end on the same hardware, so no speed-up factor is claimed. Drafts cap generation by the requested length, and the backend warms Gemma at start.
+- **Security.** The demo server sets a strict content security policy on the website and workspace, the backend rejects redirects and bounds retries, and every response sets security headers. See [SECURITY.md](../SECURITY.md).
+
+## Product surfaces (17 October 2026)
+
+- **Website.** A landing page with a scroll-driven product tour (zoom in to a form, fill, zoom out), reduced-motion fallback, and a six-page workspace. Dashboard numbers come from the extension snapshot or show a dash. Landing preview numbers are labelled sample data.
+- **Extension.** Home, Autofill, Memory, Templates, Privacy and Settings. Home shows real counts from this browser; "typing saved" is an estimate at 6 s per field and says so.
+- **Walkthrough video.** `npm run demo:video` records the website and extension with real engines. Waiting for model calls is fast-forwarded and labelled. The side panel runs as a tab; native permission dialogs are not scripted.
+- **Verification.** 187 Vitest tests, 8 Python tests, typecheck and build clean.

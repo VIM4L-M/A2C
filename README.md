@@ -10,7 +10,9 @@ Sponsor tech: **Gemma 4** (primary AI), **Backboard.io** (opt-in cloud memory), 
 
 ## Status: what is implemented, configured and verified
 
-Latest follow-up results supersede the historical table below: [remaining validation](docs/remaining-validation.md). The current local build passes 180 tests and adds selectable-text PDF resume import, same-origin unsandboxed iframe scanning, single-select ARIA listboxes and optional local Gemma prose extraction. Live Backboard lifecycle checks passed. The published backend is live on Render with authentication and Backboard; hosted Gemma is not configured. Local fixes remain uncommitted and are not part of that deployment. Tinker has a configured key but its capabilities request failed DNS resolution; no fine-tuning run completed.
+Latest follow-up results supersede the historical table below: [remaining validation](docs/remaining-validation.md). The current build passes 187 tests and adds selectable-text PDF resume import, same-origin unsandboxed iframe scanning, single-select ARIA listboxes and optional local Gemma prose extraction. Live Backboard lifecycle checks passed. The published backend is live on Render with authentication and Backboard; hosted Gemma is not configured.
+
+**Fine-tuned specialist.** A Tinker LoRA run (Qwen3.5-4B, 260 synthetic examples, 3 epochs) completed and is served through Tinker's OpenAI-compatible endpoint. On 63 unseen labels it reaches 98.4% accuracy with no unsafe credential mapping, against 82.5% for zero-shot Gemma 4 E4B. The default **Auto** engine asks the specialist first (about one second) and falls back to Gemma 4, which also writes drafts. See the evaluation table below.
 
 | Feature | State | Evidence |
 | --- | --- | --- |
@@ -24,9 +26,12 @@ Latest follow-up results supersede the historical table below: [remaining valida
 | Safe autofill (native setters, input/change events, React-controlled inputs, selects, radios, checkbox groups); never submits | ✅ Working | React 19 test + no-submit test + Chromium run |
 | Missing info → Use once / Save to memory (consent + extra confirmation) | ✅ Working | Chromium run + tests |
 | Backend auth (per-user bearer tokens), per-user rate limits, startup guard | ✅ Implemented + tested | `tests/backend.test.ts` |
-| **Backboard.io** cloud memory (opt-in save, list, read-only search, delete, one assistant per user) | ⚙️ Implemented, tested against a mocked Backboard API | **Not run against a live Backboard account** (no API key available) |
-| **Render** deployment (`render.yaml`, 0.0.0.0/PORT, health check, CORS origin) | ⚙️ Configured | **Not deployed** from this machine |
-| **Tinker** dataset, SFT script, evaluation, comparison | ⚙️ Scripts + tests run; baseline and Gemma evaluated | **No fine-tuning run yet** (no `TINKER_API_KEY`) |
+| **Backboard.io** cloud memory (opt-in save, list, read-only search, delete, one assistant per user) | ✅ Implemented and tested | Mocked API tests plus a live lifecycle check ([remaining validation](docs/remaining-validation.md)) |
+| **Render** deployment (`render.yaml`, 0.0.0.0/PORT, health check, CORS origin) | ✅ Configured and deployed | Live service with authentication; hosted Gemma is not configured |
+| **Tinker** dataset, SFT script, evaluation, comparison | ✅ Fine-tuning run completed and evaluated | 98.4% on 63 unseen labels; results in `training/tinker/results/` |
+| Auto engine (specialist first, Gemma 4 fallback and drafts) | ✅ Implemented + tested | `tests/backend.test.ts` |
+| Website: landing page with scroll product tour and six-page workspace | ✅ Working | Driven in Chromium; real usage numbers only after the extension is connected |
+| Extension pages: Home, Autofill, Memory, Templates, Privacy, Settings | ✅ Working | Production build; recorded walkthrough |
 | DOCX `{{placeholders}}` and fillable PDF (AcroForm) | ✅ Working | Tests on demo files + Chromium run |
 
 Not supported: cross-origin or sandboxed iframes, closed shadow roots, unopened/virtualized custom choices, multi-select listboxes, scanned or encrypted PDFs, PDF checkboxes and signatures, blank lines in Word documents. Visible single-select ARIA listboxes, ARIA radio and checkbox groups, including Google Forms, are supported.
@@ -66,7 +71,7 @@ flowchart LR
 
 | Path | What it is |
 | --- | --- |
-| `apps/extension` | MV3 extension (React 19, TypeScript, Vite 8, Tailwind 4, Lucide, Zod). Side panel tabs: Autofill, Memory, Templates, Privacy, Settings |
+| `apps/extension` | MV3 extension (React 19, TypeScript, Vite 8, Tailwind 4, Lucide, Zod). Side panel tabs: Home, Autofill, Memory, Templates, Privacy, Settings |
 | `apps/server` | Express 5 backend: auth, rate limits, Gemma adapter (retries, JSON mode), Backboard client, specialist route |
 | `packages/shared` | Schemas, classifier, secret detector, memory catalog, matcher, policy engine, Gemma and specialist prompts |
 | `training/tinker` | Synthetic dataset, Tinker SFT script, evaluation, comparison |
@@ -146,19 +151,19 @@ python training/tinker/train_sft.py --base-model Qwen/Qwen3.5-4B
 python training/tinker/evaluate.py --predictor tinker && python training/tinker/compare.py
 ```
 
-Tinker's catalog has no Gemma model, so the specialist fine-tunes `Qwen/Qwen3.5-4B`. Gemma 4 remains the default engine.
+Tinker's catalog has no Gemma model, so the specialist fine-tunes `Qwen/Qwen3.5-4B`. To serve it, set `SPECIALIST_BASE_URL` and `SPECIALIST_MODEL` (see `.env.example`); the extension's default **Auto** engine then uses it first and keeps Gemma 4 as the fallback and for drafts.
 
 ---
 
-## Test and evaluation results (dev machine, 2026-10-16)
+## Test and evaluation results (dev machine, 2026-10-17)
 
 | Suite | Result |
 | --- | --- |
-| `npm test` (Vitest) | **165 / 165 passed** (12 files) |
+| `npm test` (Vitest) | **187 / 187 passed** |
 | `npm run test:training` (Python unittest) | **8 / 8 passed** |
 | `npm run typecheck` | Clean |
 | `npm run build` | Clean |
-| Chromium end-to-end (scenes 1–5) | Passed (mock mode run; script in the dev scratchpad) |
+| Chromium end-to-end (scenes 1–5) | Passed; `npm run demo:video` records the full walkthrough |
 
 Field-mapping evaluation on 63 held-out synthetic labels (unseen wording):
 
@@ -166,9 +171,9 @@ Field-mapping evaluation on 63 held-out synthetic labels (unseen wording):
 | --- | --- | --- | --- | --- | --- |
 | Deterministic rules (A2C baseline) | 84.1% | 81.1% | 100% | 0 | 2.5 s |
 | **Gemma 4 E4B** zero-shot (Ollama, CPU) | 82.5% | **90.6%** | 0% (answered `ask_user`) | **0** | 165 s |
-| Tinker fine-tuned specialist | not run (no `TINKER_API_KEY`) | | | | |
+| **Tinker fine-tuned specialist** (Qwen3.5-4B LoRA) | **98.4%** | **98.1%** | 100% | **0** | 176 s for 63 labels (about 1 s each when served) |
 
-What this shows: Gemma 4 understands unfamiliar wording better than keyword rules (90.6% vs 81.1% on memory keys). It never mapped a credential label to a memory key, but it answered `ask_user` rather than `skip` for credentials. That is why A2C runs the deterministic classifier **before** Gemma: credentials are blocked by rules (100% recall), and Gemma handles meaning. Raw outputs are in `training/tinker/results/`.
+What this shows: Gemma 4 understands unfamiliar wording better than keyword rules (90.6% vs 81.1% on memory keys). It never mapped a credential label to a memory key, but it answered `ask_user` rather than `skip` for credentials. That is why A2C runs the deterministic classifier **before** Gemma: credentials are blocked by rules (100% recall), and Gemma handles meaning. The fine-tuned specialist learned both: meaning and the credential rule. The eval labels use wording the training set never contains and the synthetic data has no overlap with them (checked by `npm run test:training`). The set is small and synthetic, so treat the numbers as an experiment, not a benchmark of real-world forms. Raw outputs are in `training/tinker/results/`.
 
 ---
 
