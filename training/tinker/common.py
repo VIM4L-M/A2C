@@ -24,6 +24,20 @@ ALL_LABELS: list[str] = KEYS + EXTRA
 _WS = re.compile(r"\s+")
 
 
+def load_env() -> None:
+    """Load the repo-root .env (values may be quoted). Existing environment variables win."""
+    import os
+
+    env = HERE.parent.parent / ".env"
+    if not env.exists():
+        return
+    for line in env.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if "=" in line and not line.startswith("#"):
+            key, value = line.split("=", 1)
+            os.environ.setdefault(key.strip(), value.strip().strip("\"'"))
+
+
 def sanitize(text: str, max_len: int) -> str:
     """Same behaviour as sanitizeLabel() for plain ASCII labels."""
     cleaned = _WS.sub(" ", "".join(" " if ord(c) < 32 or 127 <= ord(c) <= 159 else c for c in text)).strip()

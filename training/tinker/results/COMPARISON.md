@@ -6,6 +6,6 @@ Held-out synthetic eval set (unseen phrasings). Only predictors that were actual
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Deterministic rules (A2C baseline) | - | 63 | 84.1% | 81.1% | 100.0% | 0 | 2.5 | 2026-10-16T14:10:48 |
 | Gemma 4 (zero-shot) | hf.co/google/gemma-4-E4B-it-qat-q4_0-gguf | 63 | 82.5% | 90.6% | 0.0% | 0 | 165.5 | 2026-10-16T14:22:58 |
-| Tinker fine-tuned specialist | - | not run | | | | | | |
+| Tinker fine-tuned specialist | - | 63 | 98.4% | 98.1% | 100.0% | 0 | 176.4 | 2026-10-17T22:02:18 |
 
 Deterministic security rules run before any model in A2C, so a model's skip recall is defence in depth, not the only protection.

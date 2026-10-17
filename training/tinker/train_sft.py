@@ -19,7 +19,7 @@ import random
 import sys
 import time
 
-from common import DATA_DIR, RUNS_DIR, read_jsonl
+from common import DATA_DIR, RUNS_DIR, load_env, read_jsonl
 
 
 def build_datum(types, tokenizer, prompt: str, completion: str):
@@ -46,6 +46,7 @@ def main() -> int:
     parser.add_argument("--learning-rate", type=float, default=2e-4)
     parser.add_argument("--name", default="a2c-mapping-specialist")
     args = parser.parse_args()
+    load_env()
 
     if not os.environ.get("TINKER_API_KEY"):
         print("TINKER_API_KEY is not set. No training was run.", file=sys.stderr)
@@ -72,10 +73,13 @@ def main() -> int:
             batch = data[start : start + args.batch_size]
             fwd = training_client.forward_backward(batch, "cross_entropy").result()
             training_client.optim_step(types.AdamParams(learning_rate=args.learning_rate)).result()
-            loss = getattr(fwd, "loss", None)
+            # Cross-entropy is summed over weighted (completion) tokens; report per-token loss.
+            weighted = sum(sum(d.loss_fn_inputs["weights"].tolist() if hasattr(d.loss_fn_inputs["weights"], "tolist") else d.loss_fn_inputs["weights"]) for d in batch)
+            total = fwd.metrics.get("loss:sum")
+            loss = round(float(total) / weighted, 4) if total is not None and weighted else None
             if loss is not None:
-                losses.append(float(loss))
-            print(f"epoch {epoch + 1}/{args.epochs} batch {start // args.batch_size + 1}: loss={loss}")
+                losses.append(loss)
+            print(f"epoch {epoch + 1}/{args.epochs} batch {start // args.batch_size + 1}: loss/token={loss}")
 
     saved = training_client.save_weights_for_sampler(args.name).result()
     record = {
@@ -86,7 +90,9 @@ def main() -> int:
         "learning_rate": args.learning_rate,
         "train_examples": len(rows),
         "sampler_path": saved.path,
-        "final_losses": losses[-5:],
+        "loss_first_batch": losses[0] if losses else None,
+        "loss_last_batch": losses[-1] if losses else None,
+        "loss_curve": losses,
         "seconds": round(time.time() - started, 1),
         "finished_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
     }

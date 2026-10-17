@@ -23,19 +23,13 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-from common import DATA_DIR, HERE, KEYS, RESULTS_DIR, RUNS_DIR, metrics, parse_output, read_jsonl
+from common import DATA_DIR, HERE, KEYS, RESULTS_DIR, RUNS_DIR, load_env, metrics, parse_output, read_jsonl
 
 REPO = HERE.parent.parent
 
 
 def load_dotenv() -> None:
-    env = REPO / ".env"
-    if not env.exists():
-        return
-    for line in env.read_text(encoding="utf-8").splitlines():
-        if "=" in line and not line.lstrip().startswith("#"):
-            k, v = line.split("=", 1)
-            os.environ.setdefault(k.strip(), v.strip())
+    load_env()
 
 
 def predict_baseline(rows: list[dict]) -> list[str]:
