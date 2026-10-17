@@ -71,7 +71,7 @@
     s.setProperty('--zout', ease(seg(p, 0.84, 1)).toFixed(3));
     s.setProperty('--trio', ease(seg(p, 0.88, 1)).toFixed(3));
     s.setProperty('--prog', p.toFixed(3));
-    if (progress) progress.parentElement.style.opacity = r.top < vh && r.bottom > 0 ? '1' : '0';
+    if (progress) progress.parentElement.style.opacity = r.top <= 0 && r.bottom >= vh ? '1' : '0'; // only while the stage is pinned
 
     // Typing: each field fills in sequence between 0.36 and 0.6.
     fields.forEach((f, i) => {
