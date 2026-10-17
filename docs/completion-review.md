@@ -96,3 +96,9 @@ Onboarding and fictional profile import were completed through the UI. Chrome we
 - **Extension.** Home, Autofill, Memory, Templates, Privacy and Settings. Home shows real counts from this browser; "typing saved" is an estimate at 6 s per field and says so.
 - **Walkthrough video.** `npm run demo:video` records the website and extension with real engines. Waiting for model calls is fast-forwarded and labelled. The side panel runs as a tab; native permission dialogs are not scripted.
 - **Verification.** 187 Vitest tests, 8 Python tests, typecheck and build clean.
+
+## Website account and native walkthrough (17 October 2026)
+
+- **Account.** The workspace has an Account page. It creates a local profile (name, email, profile type) in the browser, with no password and no server. The extension's first-run screen opens that page with its extension ID in the address; the website then proposes the three facts through the existing workspace connection. The extension shows the exact values and saves them only after one confirmation. Opening the page from the extension enables the connection for those three keys only; activity sharing stays off. Covered by `tests/account.test.ts` (validation, address parsing, bridge acceptance, refusal when the connection is off or the sender is not the workspace).
+- **Native recording.** `npm run demo:native` records the website pages, a real form, the real toolbar icon click and the real side panel. It uses Chrome for Testing because branded Chrome refuses `--load-extension`, shows that browser's grey banner, and starts the browser with `--disable-extensions-except` so unrelated extensions the operating system registered do not appear.
+- **Verification.** 192 Vitest tests, typecheck and build clean.

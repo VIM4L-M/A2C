@@ -32,6 +32,7 @@ Latest follow-up results supersede the historical table below: [remaining valida
 | Auto engine (specialist first, Gemma 4 fallback and drafts) | ✅ Implemented + tested | `tests/backend.test.ts` |
 | Website: landing page with scroll product tour and six-page workspace | ✅ Working | Driven in Chromium; real usage numbers only after the extension is connected |
 | Extension pages: Home, Autofill, Memory, Templates, Privacy, Settings | ✅ Working | Production build; recorded walkthrough |
+| Website account (local profile) that the extension connects to | ✅ Working | `tests/account.test.ts`; recorded walkthrough. No password or server: the website proposes name, email and profile type and the extension asks you to confirm |
 | DOCX `{{placeholders}}` and fillable PDF (AcroForm) | ✅ Working | Tests on demo files + Chromium run |
 
 Not supported: cross-origin or sandboxed iframes, closed shadow roots, unopened/virtualized custom choices, multi-select listboxes, scanned or encrypted PDFs, PDF checkboxes and signatures, blank lines in Word documents. Visible single-select ARIA listboxes, ARIA radio and checkbox groups, including Google Forms, are supported.
@@ -219,5 +220,7 @@ Source pages: [Simplify review](https://www.loopcv.pro/directory/simplify/), [Si
 | `npm run start:server` / `npm run dev:server` | Backend |
 | `npm run token -- <userId>` | Create a user token and its `A2C_USERS` entry |
 | `npm run demo` / `npm run demo:docs` | Demo server / regenerate demo DOCX and PDF |
+| `npm run demo:video` | Playwright walkthrough (side panel shown as a tab) |
+| `npm run demo:native` | Records the real browser, toolbar icon and side panel to `output/walkthrough/a2c-native.mp4`. Needs `CHROME_PATH` (Playwright Chromium or Chrome for Testing) and takes over the mouse for a few minutes |
 
 Security model and limitations: [SECURITY.md](SECURITY.md).
