@@ -44,7 +44,7 @@ export function DocumentsTab() {
         setError(
           type === 'docx'
             ? 'No {{placeholders}} found. Add tags such as {{full_name}} to the template. Blank lines in Word documents cannot be detected automatically.'
-            : 'This PDF has no interactive form fields. Scanned or flattened PDFs are not supported.',
+            : 'This PDF has no interactive form fields, so A2C cannot fill it. Templates only fill PDFs with real form boxes. Is it your resume? Use Memory > Import to read it into your profile instead. Scanned or printed-flat forms are not supported; a Word template with {{placeholders}} works.',
         );
         return;
       }
