@@ -11,6 +11,8 @@ import { Card, SectionTitle } from '../components/ui';
 import '../styles/index.css';
 import './website.css';
 import { Connection, ConnectedActivity } from './Connection';
+import { ActivitySchema } from '../lib/activity';
+import { SECONDS_PER_FIELD, formatSaved } from '../sidepanel/HomeTab';
 
 // Website-owned storage: never impersonate or silently read extension storage.
 const websiteKV: KV = {
@@ -28,9 +30,23 @@ const pages = [
 ] as const;
 function route() { return location.hash.slice(1) || 'dashboard'; }
 
+/** Big usage tiles. Real numbers only: from the extension snapshot when connected, otherwise an honest dash. */
+function StatTiles() {
+  const { facts } = useApp();
+  let snap: ReturnType<typeof ActivitySchema.parse> | null = null;
+  try { const p = ActivitySchema.safeParse(JSON.parse(sessionStorage.getItem('a2c_shared_activity') ?? 'null')); snap = p.success ? p.data : null; } catch { snap = null; }
+  const tiles: Array<[string, string | number, string]> = [
+    ['Fields filled', snap ? snap.fieldsFilled : '—', snap ? 'Across every form you used A2C on' : 'Connect the extension in Settings'],
+    ['Forms scanned', snap ? snap.scans : '—', snap ? 'Each scan is your explicit click' : 'Shown after a snapshot refresh'],
+    ['Typing saved', snap ? formatSaved(snap.fieldsFilled * SECONDS_PER_FIELD) : '—', `Estimate at ${SECONDS_PER_FIELD} s per field`],
+    ['Fields blocked', snap ? snap.fieldsBlocked : '—', 'Passwords, codes and card data'],
+    ['Confirmed facts', facts.filter(f => f.verified !== false).length, 'Saved in this website workspace'],
+  ];
+  return <section aria-label="Usage at a glance" className="web-hero-stats">{tiles.map(([label, value, note]) => <div key={label} className="web-tile"><p className="web-kicker">{label}</p><p className="web-tile-value">{value}</p><p className="web-tile-note">{note}</p></div>)}</section>;
+}
 function Dashboard() {
   const { facts, activity } = useApp();
-  return <><ConnectedActivity /><div className="web-metrics">{[['Confirmed facts', facts.filter(f => f.verified !== false).length], ['Profile updates', activity.recent.filter(e => e.type === 'memory_saved').length], ['Extension activity', 'Explicit refresh']].map(([label, value]) => <Card key={label}><p className="web-kicker">{label}</p><div className="web-metric">{value}</div><p className="text-xs text-muted">{label === 'Profile updates' ? 'In the recent activity window' : label === 'Extension activity' ? 'View the shared snapshot above' : 'Saved in this website workspace'}</p></Card>)}</div><div className="web-columns"><Card><SectionTitle>Your next step</SectionTitle><h2 className="font-pixel text-3xl">Make A2C yours.</h2><p className="my-4 text-muted">Add your profile, review imported facts, then use the extension to fill forms with permission.</p><a className="web-cta" href="#walkthrough">Start the walkthrough <ArrowUpRight size={16}/></a></Card><Card><SectionTitle>Built around your choices</SectionTitle><ul className="web-checklist"><li>Review every imported fact</li><li>Keep credentials out of memory</li><li>Separate fill, save and sharing consent</li><li>Submit website forms yourself</li></ul></Card></div><Card><SectionTitle>Workspace activity</SectionTitle><ActivityTab /></Card></>;
+  return <><StatTiles /><ConnectedActivity /><div className="web-metrics">{[['Confirmed facts', facts.filter(f => f.verified !== false).length], ['Profile updates', activity.recent.filter(e => e.type === 'memory_saved').length], ['Extension activity', 'Explicit refresh']].map(([label, value]) => <Card key={label}><p className="web-kicker">{label}</p><div className="web-metric">{value}</div><p className="text-xs text-muted">{label === 'Profile updates' ? 'In the recent activity window' : label === 'Extension activity' ? 'View the shared snapshot above' : 'Saved in this website workspace'}</p></Card>)}</div><div className="web-columns"><Card><SectionTitle>Your next step</SectionTitle><h2 className="font-pixel text-3xl">Make A2C yours.</h2><p className="my-4 text-muted">Add your profile, review imported facts, then use the extension to fill forms with permission.</p><a className="web-cta" href="#walkthrough">Start the walkthrough <ArrowUpRight size={16}/></a></Card><Card><SectionTitle>Built around your choices</SectionTitle><ul className="web-checklist"><li>Review every imported fact</li><li>Keep credentials out of memory</li><li>Separate fill, save and sharing consent</li><li>Submit website forms yourself</li></ul></Card></div><Card><SectionTitle>Workspace activity</SectionTitle><ActivityTab /></Card></>;
 }
 function Walkthrough() {
   return <div className="web-guide">{[
