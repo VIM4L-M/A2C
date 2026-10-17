@@ -59,7 +59,7 @@ export class BackendClient {
     this.fetchImpl = opts.fetchImpl ?? ((...args) => fetch(...args));
   }
 
-  async request(method: 'GET' | 'POST' | 'DELETE', path: string, body?: unknown, timeoutMs = this.opts.timeoutMs ?? 300_000): Promise<unknown> {
+  async request(method: 'GET' | 'POST' | 'DELETE', path: string, body?: unknown, timeoutMs = this.opts.timeoutMs ?? 300_000, meta?: { engine?: string }): Promise<unknown> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     const headers: Record<string, string> = {};
@@ -83,6 +83,7 @@ export class BackendClient {
     } finally {
       clearTimeout(timer);
     }
+    if (meta) meta.engine = res.headers.get('x-a2c-engine') ?? undefined;
     let data: unknown;
     try {
       data = await res.json();
@@ -107,17 +108,26 @@ export class BackendClient {
 }
 
 export class GemmaProvider implements AIProvider {
-  readonly kind: 'gemma' | 'specialist';
+  private readonly mode: 'auto' | 'gemma' | 'specialist';
+  private served: 'gemma' | 'specialist' | null = null;
   private readonly backend: BackendClient;
 
-  constructor(backendUrl: string, opts: BackendOptions & { engine?: 'gemma' | 'specialist' } = {}) {
+  constructor(backendUrl: string, opts: BackendOptions & { engine?: 'auto' | 'gemma' | 'specialist' } = {}) {
     this.backend = new BackendClient(backendUrl, opts);
-    this.kind = opts.engine ?? 'gemma';
+    this.mode = opts.engine ?? 'gemma';
+  }
+
+  /** The engine that actually answered the last request ("auto" resolves to specialist or gemma). */
+  get kind(): 'gemma' | 'specialist' {
+    return this.served ?? (this.mode === 'specialist' ? 'specialist' : 'gemma');
   }
 
   async mapFields(request: FieldMappingRequest): Promise<FieldMappingResponse> {
     const body = FieldMappingRequestSchema.parse(request);
-    const data = await this.backend.request('POST', this.kind === 'specialist' ? '/api/map?engine=specialist' : '/api/map', body);
+    const meta: { engine?: string } = {};
+    const data = await this.backend.request('POST', this.mode === 'gemma' ? '/api/map' : `/api/map?engine=${this.mode}`, body, undefined, meta);
+    // Prefer the engine the backend reports; without the header fall back to what was requested.
+    this.served = meta.engine === 'specialist' || meta.engine === 'gemma' ? meta.engine : this.mode === 'specialist' ? 'specialist' : 'gemma';
     const parsed = FieldMappingResponseSchema.safeParse(data);
     if (!parsed.success) throw new InferenceError('Model mapping response failed validation', 'invalid_model_output');
     return parsed.data;

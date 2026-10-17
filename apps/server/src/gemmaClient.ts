@@ -33,7 +33,8 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export function createChatClient(t: ChatTarget, fetchImpl: FetchLike = fetch): GemmaClient {
   const headers = (): Record<string, string> => {
-    const h: Record<string, string> = { 'Content-Type': 'application/json' };
+    // Some providers (e.g. Tinker behind Cloudflare) reject anonymous default user agents.
+    const h: Record<string, string> = { 'Content-Type': 'application/json', 'User-Agent': 'a2c-backend/0.1' };
     if (t.apiKey) h.Authorization = `Bearer ${t.apiKey}`;
     return h;
   };
@@ -42,7 +43,7 @@ export function createChatClient(t: ChatTarget, fetchImpl: FetchLike = fetch): G
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), t.timeoutMs);
     try {
-      return await fetchImpl(`${t.baseUrl}/chat/completions`, {
+      return await fetchImpl(`${t.baseUrl}/${t.mode === 'completions' ? 'completions' : 'chat/completions'}`, {
         method: 'POST',
         redirect: 'error',
         headers: headers(),
@@ -58,9 +59,12 @@ export function createChatClient(t: ChatTarget, fetchImpl: FetchLike = fetch): G
   }
 
   async function once(messages: ChatMessage[], maxTokens: number): Promise<string> {
+    const raw = t.mode === 'completions';
     const msgs = t.mergeSystemPrompt ? mergeSystemIntoUser(messages) : messages;
-    const body: Record<string, unknown> = { model: t.model, messages: msgs, temperature: 0, max_tokens: maxTokens, stream: false };
-    if (t.jsonResponseFormat) body.response_format = { type: 'json_object' };
+    const body: Record<string, unknown> = raw
+      ? { model: t.model, prompt: messages.map((m) => m.content).join('\n'), temperature: 0, max_tokens: maxTokens, stop: ['\n'], stream: false }
+      : { model: t.model, messages: msgs, temperature: 0, max_tokens: maxTokens, stream: false };
+    if (t.jsonResponseFormat && !raw) body.response_format = { type: 'json_object' };
 
     let res = await post(body);
     if (res.status === 400 && t.jsonResponseFormat) {
@@ -77,7 +81,8 @@ export function createChatClient(t: ChatTarget, fetchImpl: FetchLike = fetch): G
     } catch {
       throw new GemmaError(`${t.label} server returned non-JSON`, 'bad_response');
     }
-    const content = (data as { choices?: Array<{ message?: { content?: unknown } }> })?.choices?.[0]?.message?.content;
+    const choice = (data as { choices?: Array<{ message?: { content?: unknown }; text?: unknown }> })?.choices?.[0];
+    const content = raw ? choice?.text : choice?.message?.content;
     if (typeof content !== 'string' || !content.trim()) throw new GemmaError(`${t.label} returned an empty completion`, 'bad_response');
     return content;
   }

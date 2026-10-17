@@ -206,6 +206,47 @@ describe('fine-tuned specialist and retries', () => {
     expect(prompts[0]).toMatch(/^Map the web form field to one memory key\./);
   });
 
+  it('auto engine: specialist answers first, Gemma only when the specialist is down', async () => {
+    const body = {
+      fields: [{ id: 'f_auto00001', label: 'Developer Repository', type: 'url', options: [] }],
+      availableMemoryKeys: [{ key: 'github_url', description: 'GitHub', hasValue: true }],
+    };
+    let gemmaCalls = 0;
+    const gemma: GemmaClient = {
+      configured: true,
+      model: 'g',
+      chat: async () => {
+        gemmaCalls += 1;
+        return JSON.stringify({ mappings: [{ fieldId: 'f_auto00001', action: 'use_memory', memoryKey: 'github_url', transform: 'none', confidence: 0.9, reason: 'gemma' }] });
+      },
+      listModels: async () => ({ reachable: true, models: [] }),
+    };
+    const up: GemmaClient = { configured: true, model: 's', chat: async () => ' github_url\n', listModels: async () => ({ reachable: true, models: [] }) };
+    const down: GemmaClient = {
+      configured: true,
+      model: 's',
+      chat: async () => {
+        throw new Error('specialist offline');
+      },
+      listModels: async () => ({ reachable: false, models: [] }),
+    };
+
+    const urlUp = await start({}, { gemma, specialist: up });
+    const a = await call(`${urlUp}/api/map?engine=auto`, 'POST', undefined, body);
+    expect(a.headers.get('x-a2c-engine')).toBe('specialist');
+    expect((await a.json()).mappings[0]).toMatchObject({ memoryKey: 'github_url', reason: 'Fine-tuned specialist mapping' });
+    expect(gemmaCalls).toBe(0);
+    server?.close();
+
+    const urlDown = await start({}, { gemma, specialist: down });
+    const b = await call(`${urlDown}/api/map?engine=auto`, 'POST', undefined, body);
+    expect(b.status).toBe(200);
+    expect(b.headers.get('x-a2c-engine')).toBe('gemma');
+    expect(gemmaCalls).toBe(1);
+    // An explicit specialist request must not silently fall back.
+    expect((await call(`${urlDown}/api/map?engine=specialist`, 'POST', undefined, body)).status).toBeGreaterThanOrEqual(500);
+  });
+
   it('retries a 5xx once, then succeeds', async () => {
     let calls = 0;
     const client = createChatClient(
@@ -217,6 +258,24 @@ describe('fine-tuned specialist and retries', () => {
     );
     expect(await client.chat([{ role: 'user', content: 'hi' }])).toBe('ok');
     expect(calls).toBe(2);
+  });
+
+  it('serves the Tinker specialist through raw /completions with a user agent', async () => {
+    const seen: Array<{ url: string; ua: string | null; body: Record<string, unknown> }> = [];
+    const client = createChatClient(
+      { label: 'Specialist', baseUrl: 'https://tinker.example/oai/v1', model: 'tinker://run/sampler_weights/x', apiKey: 'k', jsonResponseFormat: false, mergeSystemPrompt: false, timeoutMs: 1000, maxTokens: 12, maxRetries: 0, mode: 'completions' },
+      (async (url: string, init?: RequestInit) => {
+        seen.push({ url, ua: new Headers(init?.headers).get('user-agent'), body: JSON.parse(String(init?.body)) });
+        return new Response(JSON.stringify({ choices: [{ text: ' github_url\n' }] }), { status: 200 });
+      }) as unknown as typeof fetch,
+    );
+    const prompt = 'Map the web form field to one memory key.\nKey:';
+    expect(await client.chat([{ role: 'user', content: prompt }])).toBe(' github_url\n');
+    expect(seen[0]!.url).toBe('https://tinker.example/oai/v1/completions');
+    expect(seen[0]!.ua).toMatch(/^a2c-backend/);
+    expect(seen[0]!.body).toMatchObject({ prompt, stop: ['\n'], temperature: 0 });
+    expect(seen[0]!.body.messages).toBeUndefined();
+    expect(seen[0]!.body.response_format).toBeUndefined();
   });
 
   it('does not retry client errors', async () => {

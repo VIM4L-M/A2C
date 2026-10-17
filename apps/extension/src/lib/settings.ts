@@ -22,11 +22,11 @@ export function isAllowedBackendUrl(url: string): boolean {
 /** @deprecated kept for older imports */
 export const isLocalProxyUrl = isAllowedBackendUrl;
 
-export const AIModeSchema = z.enum(['gemma', 'specialist', 'mock']);
+export const AIModeSchema = z.enum(['auto', 'gemma', 'specialist', 'mock']);
 export type AIModeSetting = z.infer<typeof AIModeSchema>;
 
 export const SettingsSchema = z.object({
-  aiMode: AIModeSchema.default('gemma'),
+  aiMode: AIModeSchema.default('auto'),
   backendUrl: z.string().refine(isAllowedBackendUrl).default(DEFAULT_BACKEND_URL),
   /** Per-user access token for a deployed backend. Stored in chrome.storage.local (not encrypted). */
   authToken: z.string().max(200).default(''),

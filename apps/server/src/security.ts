@@ -47,6 +47,7 @@ export function corsGuard(config: ProxyConfig) {
       res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
       res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-A2C-Extension-Origin');
       res.setHeader('Access-Control-Max-Age', '600');
+      res.setHeader('Access-Control-Expose-Headers', 'X-A2C-Engine');
     }
     if (req.method === 'OPTIONS') {
       res.status(allowed ? 204 : 403).end();

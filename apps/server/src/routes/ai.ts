@@ -75,19 +75,30 @@ export function aiRouter(config: ProxyConfig, gemma: GemmaClient, specialist: Ge
     const request = parsed.data;
     const fieldIds = new Set(request.fields.map((f) => f.id));
     const keys = new Set(request.availableMemoryKeys.map((k) => k.key));
+    // Fine-tuned specialist: one short label per field (about a second), same policy downstream.
+    const runSpecialist = async () => {
+      const fields = request.fields.slice(0, MAX_SPECIALIST_FIELDS);
+      return Promise.all(
+        fields.map(async (f) => {
+          const text = await specialist.chat([{ role: 'user', content: buildSpecialistPrompt({ label: f.label, type: f.type, options: f.options }) }], { maxTokens: 12 });
+          return specialistMapping(f, parseSpecialistOutput(text, keys));
+        }),
+      );
+    };
     try {
-      if (req.query.engine === 'specialist') {
-        // Optional fine-tuned specialist: one short label per field, same policy downstream.
-        const fields = request.fields.slice(0, MAX_SPECIALIST_FIELDS);
-        const mappings = await Promise.all(
-          fields.map(async (f) => {
-            const text = await specialist.chat([{ role: 'user', content: buildSpecialistPrompt({ label: f.label, type: f.type, options: f.options }) }], { maxTokens: 12 });
-            return specialistMapping(f, parseSpecialistOutput(text, keys));
-          }),
-        );
-        res.json({ mappings });
-        return;
+      const engine = req.query.engine;
+      if (engine === 'specialist' || (engine === 'auto' && specialist.configured)) {
+        try {
+          const mappings = await runSpecialist();
+          res.setHeader('X-A2C-Engine', 'specialist');
+          res.json({ mappings });
+          return;
+        } catch (err) {
+          // Auto mode never fails because the specialist is down: fall through to Gemma.
+          if (engine === 'specialist') throw err;
+        }
       }
+      res.setHeader('X-A2C-Engine', 'gemma');
       const text = await gemma.chat(buildMappingMessages(request));
       const out = FieldMappingResponseSchema.safeParse(extractJsonObject(text));
       if (!out.success) {
@@ -115,7 +126,8 @@ export function aiRouter(config: ProxyConfig, gemma: GemmaClient, specialist: Ge
       return;
     }
     try {
-      const text = await gemma.chat(buildDraftMessages(parsed.data));
+      // Cap generation: roughly 1 token per 3-4 characters plus JSON overhead. Long uncapped outputs dominate latency on CPU.
+      const text = await gemma.chat(buildDraftMessages(parsed.data), { maxTokens: Math.min(1500, Math.ceil((parsed.data.maxLength ?? 800) / 3) + 160) });
       const out = DraftResponseSchema.safeParse(extractJsonObject(text));
       if (!out.success) {
         res.status(502).json({ error: 'invalid_model_output', message: 'Gemma output did not match the draft schema' });

@@ -18,6 +18,8 @@ export interface ChatTarget {
   maxTokens: number;
   /** Extra attempts after a timeout / 5xx / network failure. */
   maxRetries: number;
+  /** 'completions' = raw text continuation (fine-tuned specialist); default chat. */
+  mode?: 'chat' | 'completions';
 }
 
 export interface ProxyConfig {
@@ -112,6 +114,8 @@ export function specialistTarget(c: ProxyConfig): ChatTarget {
     timeoutMs: Math.min(c.timeoutMs, 60_000),
     maxTokens: 12,
     maxRetries: c.maxRetries,
+    // The specialist is fine-tuned on raw prompt+completion text: no chat template.
+    mode: 'completions',
   };
 }
 
