@@ -1,6 +1,6 @@
 # A2C project rules
 
-The product authority is the user's A2C Project Specification dated 16 October 2026. See `docs/completion-review.md` for implementation coverage and explicit limitations. The unrelated SurakshaSMS rules found in Downloads do not define this project.
+The product authority is the A2C Project Specification dated 16 October 2026. See `docs/completion-review.md` for implementation coverage and explicit limitations.
 
 - Build a Chrome Manifest V3 extension. Keep the existing React/TypeScript extension, shared policy package and optional backend architecture.
 - Keep onboarding to one optional preferred-name, email and profile-type screen. Put advanced profile, imports and permissions after onboarding.

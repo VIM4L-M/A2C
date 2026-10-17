@@ -12,3 +12,4 @@ coverage/
 __pycache__/
 *.pyc
 output/
+.venv-tinker/

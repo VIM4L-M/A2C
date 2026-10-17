@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Summer Internship Application (A2C demo)</title>
+    <link rel="stylesheet" href="demo.css" />
+    <link rel="icon" href="data:," />
+  </head>
+  <body>
+    <main>
+      <form class="card" id="internship" novalidate>
+        <h1>Summer Internship 2027</h1>
+        <p class="sub">Northwind Labs (fictional). Apply in two minutes. Demo page: nothing is sent anywhere.</p>
+
+        <div class="row">
+          <label for="name">Full name</label>
+          <input id="name" name="full_name" type="text" autocomplete="name" required />
+        </div>
+        <div class="row">
+          <label for="email">Email address</label>
+          <input id="email" name="email" type="email" autocomplete="email" required />
+        </div>
+        <div class="row">
+          <label for="inst">Which institution do you attend?</label>
+          <input id="inst" name="institution" type="text" />
+        </div>
+        <div class="row">
+          <label for="skills">Technical skills</label>
+          <input id="skills" name="skills" type="text" placeholder="e.g. Python, SQL" />
+        </div>
+        <div class="row">
+          <label for="about">Tell us about yourself</label>
+          <textarea id="about" name="about" maxlength="600"></textarea>
+        </div>
+        <div class="row">
+          <label for="phone">Mobile number</label>
+          <input id="phone" name="phone" type="tel" maxlength="10" placeholder="10-digit mobile" />
+          <div class="hint">Sensitive: A2C asks before filling and lets you remember the choice for this site only.</div>
+        </div>
+        <div class="row">
+          <label for="city">Which city would you like to intern in?</label>
+          <input id="city" name="preferred_city" type="text" />
+          <div class="hint">New reusable answer: not in memory yet, so A2C asks and offers "Save for future".</div>
+        </div>
+        <div class="row">
+          <label for="pw">Create a password</label>
+          <input id="pw" name="password" type="password" autocomplete="new-password" />
+          <div class="hint">A2C never fills this. Let your browser's password manager handle it.</div>
+        </div>
+        <button type="submit">Submit application</button>
+        <p class="hint" id="submit-msg"></p>
+      </form>
+
+      <div class="card">
+        <strong>Live form state</strong>
+        <p class="hint">Updates only from real input/change events, like a framework-driven form. Submit events counted: <b id="submits">0</b></p>
+        <div class="state" id="state">{}</div>
+      </div>
+    </main>
+    <script>
+      const form = document.getElementById('internship');
+      const state = {};
+      let submits = 0;
+      const render = () => (document.getElementById('state').textContent = JSON.stringify({ ...state, password: state.password ? '(typed by user)' : undefined }, null, 2));
+      const track = (e) => {
+        const t = e.target;
+        if (t.name) state[t.name] = t.value;
+        render();
+      };
+      form.addEventListener('input', track);
+      form.addEventListener('change', track);
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        submits += 1;
+        document.getElementById('submits').textContent = String(submits);
+        document.getElementById('submit-msg').textContent = 'Submitted by the user at ' + new Date().toLocaleTimeString() + ' (demo only, nothing sent).';
+      });
+    </script>
+  </body>
+</html>

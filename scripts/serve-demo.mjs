@@ -32,7 +32,22 @@ createServer((req, res) => {
     res.writeHead(404, { 'Content-Type': 'text/plain' }).end('Not found');
     return;
   }
-  res.writeHead(200, { 'Content-Type': types[extname(file)] ?? 'application/octet-stream', 'Cache-Control': 'no-store' });
+  const isSite = /^\/(landing\.html|workspace\/)/.test(path);
+  res.writeHead(200, {
+    'Content-Type': types[extname(file)] ?? 'application/octet-stream',
+    'Cache-Control': 'no-store',
+    'X-Content-Type-Options': 'nosniff',
+    'Referrer-Policy': 'no-referrer',
+    'X-Frame-Options': 'SAMEORIGIN',
+    'Cross-Origin-Opener-Policy': 'same-origin',
+    // The product site loads only its own scripts, styles and fonts. Demo forms keep their inline scripts.
+    ...(isSite
+      ? {
+          'Content-Security-Policy':
+            "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' http://127.0.0.1:* http://localhost:*; base-uri 'none'; form-action 'self'; frame-ancestors 'self'",
+        }
+      : {}),
+  });
   createReadStream(file).pipe(res);
 }).listen(port, '127.0.0.1', () => {
   console.log(`Demo forms: http://localhost:${port}/`);

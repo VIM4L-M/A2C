@@ -1,12 +1,12 @@
 # A2C specification completion review
 
-Reviewed on 16 October 2026 against `C:/Users/kthul/Downloads/A2C_Project_Specification.docx` (Product & Technical Specification, Hackathon MVP, 16 October 2026).
+Reviewed against the A2C Product & Technical Specification (Hackathon MVP, 16 October 2026) (Product & Technical Specification, Hackathon MVP, 16 October 2026).
 
 The core extension workflows are implemented and the specification gaps listed below were addressed. A follow-up test loaded the real unpacked extension in isolated Chromium and completed the supplied form using live Gemma. Text resume import is the specification's fallback; PDF resume parsing is deferred.
 
-## Rules checked
+## Rules
 
-No AGENTS.md, agent.md, ageet.md or CLAUDE.md was initially present in this repository. Downloads/CLAUDE.md describes SurakshaSMS, a Kotlin Android scam-detection app, with incompatible platform and product requirements. Its product rules were not applied to A2C. New repository AGENTS.md and CLAUDE.md capture the supplied A2C specification for future work.
+Repository rules live in `AGENTS.md`. The A2C specification is the product authority.
 
 ## Requirement coverage
 
@@ -59,7 +59,7 @@ The form has no secret input fields, so prohibited-field behavior is covered by 
 
 ## Installed extension and live Gemma follow-up
 
-At the user's request, repeated the test with the actual unpacked MV3 extension in Chromium 1243 using an isolated persistent profile. Extension ID: `ngamaffachalhpiknoogemheffjeanbh`. The extension's own service worker, storage, scripting injection and runtime messaging were used; no mocked Chrome API or message bridge was used. The side-panel UI was automated at its real `chrome-extension://` URL as a tab, not through the native side-panel container.
+Repeated the test with the actual unpacked MV3 extension in Chromium 1243 using an isolated persistent profile. Extension ID: `ngamaffachalhpiknoogemheffjeanbh`. The extension's own service worker, storage, scripting injection and runtime messaging were used; no mocked Chrome API or message bridge was used. The side-panel UI was automated at its real `chrome-extension://` URL as a tab, not through the native side-panel container.
 
 Onboarding and fictional profile import were completed through the UI. Chrome website permission was granted for `https://docs.google.com/*` through the real permissions API under a CDP user gesture with browser test confirmation enabled. The native permission dialog and toolbar gesture are therefore not claimed as end-to-end UI coverage. Final `chrome.permissions.getAll()` contained that one website origin.
 
