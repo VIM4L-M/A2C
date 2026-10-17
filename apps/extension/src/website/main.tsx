@@ -1,6 +1,6 @@
 import { StrictMode, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { ArrowUpRight, BookOpen, FileInput, LayoutDashboard, Settings, Shield, UserRound } from 'lucide-react';
+import { ArrowUpRight, BookOpen, FileInput, LayoutDashboard, Settings, Shield, UserCheck, UserRound } from 'lucide-react';
 import { AppProvider, useApp } from '../hooks/useApp';
 import type { KV } from '../lib/storage';
 import { ActivityTab } from '../sidepanel/ActivityTab';
@@ -11,6 +11,8 @@ import { Card, SectionTitle } from '../components/ui';
 import '../styles/index.css';
 import './website.css';
 import { Connection, ConnectedActivity } from './Connection';
+import { AccountPage, loadAccount } from './Account';
+import { firstName } from '../lib/account';
 import { ActivitySchema } from '../lib/activity';
 import { SECONDS_PER_FIELD, formatSaved } from '../sidepanel/HomeTab';
 
@@ -21,6 +23,7 @@ const websiteKV: KV = {
   async remove(key) { localStorage.removeItem(`a2c_web_${key}`); },
 };
 const pages = [
+  { id: 'account', title: 'Account', icon: UserCheck, subtitle: 'Create your account here, then connect the extension to it.' },
   { id: 'dashboard', title: 'Overview', icon: LayoutDashboard, subtitle: 'A little less repetition. A little more room to think.' },
   { id: 'walkthrough', title: 'Getting started', icon: BookOpen, subtitle: 'Four small steps. You stay in control at every one.' },
   { id: 'profile', title: 'Your profile', icon: UserRound, subtitle: 'The facts you choose to reuse. Nothing invented.' },
@@ -28,7 +31,7 @@ const pages = [
   { id: 'privacy', title: 'Privacy', icon: Shield, subtitle: 'Your information. Your boundaries.' },
   { id: 'settings', title: 'Settings', icon: Settings, subtitle: 'Know what is connected and where your data lives.' },
 ] as const;
-function route() { return location.hash.slice(1) || 'dashboard'; }
+function route() { const id = location.hash.slice(1).split('?')[0]; return id || (loadAccount() ? 'dashboard' : 'account'); }
 
 /** Big usage tiles. Real numbers only: from the extension snapshot when connected, otherwise an honest dash. */
 function StatTiles() {
@@ -46,7 +49,8 @@ function StatTiles() {
 }
 function Dashboard() {
   const { facts, activity } = useApp();
-  return <><StatTiles /><ConnectedActivity /><div className="web-metrics">{[['Confirmed facts', facts.filter(f => f.verified !== false).length], ['Profile updates', activity.recent.filter(e => e.type === 'memory_saved').length], ['Extension activity', 'Explicit refresh']].map(([label, value]) => <Card key={label}><p className="web-kicker">{label}</p><div className="web-metric">{value}</div><p className="text-xs text-muted">{label === 'Profile updates' ? 'In the recent activity window' : label === 'Extension activity' ? 'View the shared snapshot above' : 'Saved in this website workspace'}</p></Card>)}</div><div className="web-columns"><Card><SectionTitle>Your next step</SectionTitle><h2 className="font-pixel text-3xl">Make A2C yours.</h2><p className="my-4 text-muted">Add your profile, review imported facts, then use the extension to fill forms with permission.</p><a className="web-cta" href="#walkthrough">Start the walkthrough <ArrowUpRight size={16}/></a></Card><Card><SectionTitle>Built around your choices</SectionTitle><ul className="web-checklist"><li>Review every imported fact</li><li>Keep credentials out of memory</li><li>Separate fill, save and sharing consent</li><li>Submit website forms yourself</li></ul></Card></div><Card><SectionTitle>Workspace activity</SectionTitle><ActivityTab /></Card></>;
+  const account = loadAccount();
+  return <>{account ? <Card><p className="web-kicker">WELCOME BACK</p><p className="font-pixel text-4xl">Hello, {firstName(account.name)}.</p></Card> : <Card><p className="text-muted">You have no account yet. <a className="web-link" href="#account">Create one</a> to connect the extension.</p></Card>}<StatTiles /><ConnectedActivity /><div className="web-metrics">{[['Confirmed facts', facts.filter(f => f.verified !== false).length], ['Profile updates', activity.recent.filter(e => e.type === 'memory_saved').length], ['Extension activity', 'Explicit refresh']].map(([label, value]) => <Card key={label}><p className="web-kicker">{label}</p><div className="web-metric">{value}</div><p className="text-xs text-muted">{label === 'Profile updates' ? 'In the recent activity window' : label === 'Extension activity' ? 'View the shared snapshot above' : 'Saved in this website workspace'}</p></Card>)}</div><div className="web-columns"><Card><SectionTitle>Your next step</SectionTitle><h2 className="font-pixel text-3xl">Make A2C yours.</h2><p className="my-4 text-muted">Add your profile, review imported facts, then use the extension to fill forms with permission.</p><a className="web-cta" href="#walkthrough">Start the walkthrough <ArrowUpRight size={16}/></a></Card><Card><SectionTitle>Built around your choices</SectionTitle><ul className="web-checklist"><li>Review every imported fact</li><li>Keep credentials out of memory</li><li>Separate fill, save and sharing consent</li><li>Submit website forms yourself</li></ul></Card></div><Card><SectionTitle>Workspace activity</SectionTitle><ActivityTab /></Card></>;
 }
 function Walkthrough() {
   return <div className="web-guide">{[
@@ -68,9 +72,10 @@ function WebsiteSettings() {
 function Website() {
   const [current, setCurrent] = useState(route);
   const { ready } = useApp();
+  const [acct, setAcct] = useState(loadAccount);
   useEffect(() => { const change = () => { setCurrent(route()); window.scrollTo(0,0); }; window.addEventListener('hashchange',change); return () => window.removeEventListener('hashchange',change); }, []);
   const page = pages.find(p => p.id === current);
   useEffect(() => { document.title = `${page?.title ?? 'Page not found'} · A2C`; document.getElementById('page-title')?.focus(); }, [current, page]);
-  return <div className="web-shell"><a className="web-skip" href="#web-content" onClick={e => { e.preventDefault(); document.getElementById('web-content')?.focus(); }}>Skip to content</a><aside className="web-sidebar"><a className="app-brand" href="../landing.html">A2C_</a><p className="web-kicker">YOUR PERSONAL WORKSPACE</p><nav aria-label="Workspace pages">{pages.map(p => <a key={p.id} href={`#${p.id}`} aria-current={current === p.id ? 'page' : undefined}><p.icon size={18}/>{p.title}</a>)}</nav><div className="web-sidebar-note"><Shield size={18}/><p>Local to this browser.<br/>Always on your terms.</p></div><a className="web-link" href="../landing.html">Back to website ↗</a></aside><main tabIndex={-1} id="web-content" className="web-main"><div className="web-topline"><span>WORKSPACE / {page?.title.toUpperCase() ?? 'NOT FOUND'}</span><a href="#settings">Manage extension connection</a></div><header className="web-page-heading"><h1 id="page-title" tabIndex={-1}>{page?.title ?? 'Page not found'}</h1><p>{page?.subtitle ?? 'Choose a page from the navigation.'}</p></header><div className="web-boundary">Local workspace · Connect in Settings to transfer confirmed facts and refresh real extension activity. Transfers never grant permission to fill.</div><div className="web-content">{!ready ? <p role="status">Loading your workspace…</p> : current === 'dashboard' ? <Dashboard/> : current === 'walkthrough' ? <Walkthrough/> : current === 'profile' ? <MemoryTab showImport={false}/> : current === 'imports' ? <Imports/> : current === 'privacy' ? <PrivacyTab showCloud={false}/> : current === 'settings' ? <WebsiteSettings/> : <a href="#dashboard">Return to overview</a>}</div></main></div>;
+  return <div className="web-shell"><a className="web-skip" href="#web-content" onClick={e => { e.preventDefault(); document.getElementById('web-content')?.focus(); }}>Skip to content</a><aside className="web-sidebar"><a className="app-brand" href="../landing.html">A2C_</a><p className="web-kicker">{acct ? `SIGNED IN AS ${firstName(acct.name).toUpperCase()}` : 'YOUR PERSONAL WORKSPACE'}</p><nav aria-label="Workspace pages">{pages.map(p => <a key={p.id} href={`#${p.id}`} aria-current={current === p.id ? 'page' : undefined}><p.icon size={18}/>{p.title}</a>)}</nav><div className="web-sidebar-note"><Shield size={18}/><p>Local to this browser.<br/>Always on your terms.</p></div><a className="web-link" href="../landing.html">Back to website ↗</a></aside><main tabIndex={-1} id="web-content" className="web-main"><div className="web-topline"><span>WORKSPACE / {page?.title.toUpperCase() ?? 'NOT FOUND'}</span><a href="#settings">Manage extension connection</a></div><header className="web-page-heading"><h1 id="page-title" tabIndex={-1}>{page?.title ?? 'Page not found'}</h1><p>{page?.subtitle ?? 'Choose a page from the navigation.'}</p></header><div className="web-boundary">Local workspace · Connect in Settings to transfer confirmed facts and refresh real extension activity. Transfers never grant permission to fill.</div><div className="web-content">{!ready ? <p role="status">Loading your workspace…</p> : current === 'account' ? <AccountPage onChange={() => setAcct(loadAccount())}/> : current === 'dashboard' ? <Dashboard/> : current === 'walkthrough' ? <Walkthrough/> : current === 'profile' ? <MemoryTab showImport={false}/> : current === 'imports' ? <Imports/> : current === 'privacy' ? <PrivacyTab showCloud={false}/> : current === 'settings' ? <WebsiteSettings/> : <a href="#dashboard">Return to overview</a>}</div></main></div>;
 }
 createRoot(document.getElementById('root')!).render(<StrictMode><AppProvider kv={websiteKV}><Website/></AppProvider></StrictMode>);
