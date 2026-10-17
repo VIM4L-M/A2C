@@ -10,6 +10,8 @@ Sponsor tech: **Gemma 4** (primary AI), **Backboard.io** (opt-in cloud memory), 
 
 ## Status: what is implemented, configured and verified
 
+Latest follow-up results supersede the historical table below: [remaining validation](docs/remaining-validation.md). The current local build passes 180 tests and adds selectable-text PDF resume import, same-origin unsandboxed iframe scanning, single-select ARIA listboxes and optional local Gemma prose extraction. Live Backboard lifecycle checks passed. The published backend is live on Render with authentication and Backboard; hosted Gemma is not configured. Local fixes remain uncommitted and are not part of that deployment. Tinker has a configured key but its capabilities request failed DNS resolution; no fine-tuning run completed.
+
 | Feature | State | Evidence |
 | --- | --- | --- |
 | MV3 extension: side panel, on-demand content script, pixel UI | ✅ Working | Production build; driven in Chromium via Playwright |
@@ -27,11 +29,11 @@ Sponsor tech: **Gemma 4** (primary AI), **Backboard.io** (opt-in cloud memory), 
 | **Tinker** dataset, SFT script, evaluation, comparison | ⚙️ Scripts + tests run; baseline and Gemma evaluated | **No fine-tuning run yet** (no `TINKER_API_KEY`) |
 | DOCX `{{placeholders}}` and fillable PDF (AcroForm) | ✅ Working | Tests on demo files + Chromium run |
 
-Not supported: iframes, closed shadow roots, custom listbox widgets, multi-select lists, scanned or encrypted PDFs, PDF checkboxes and signatures, blank lines in Word documents. ARIA radio and checkbox groups, including Google Forms, are supported.
+Not supported: cross-origin or sandboxed iframes, closed shadow roots, unopened/virtualized custom choices, multi-select listboxes, scanned or encrypted PDFs, PDF checkboxes and signatures, blank lines in Word documents. Visible single-select ARIA listboxes, ARIA radio and checkbox groups, including Google Forms, are supported.
 
 ### Specification review (16 October 2026)
 
-The [completion review](docs/completion-review.md) maps the supplied A2C specification to implementation and verification. New flows include one-screen onboarding, reviewed notes/text-resume/ChatGPT imports, category controls, exact-origin website permissions and explicit saving of corrected page answers. Resume PDF parsing remains deferred; use plain UTF-8 text.
+The [completion review](docs/completion-review.md) records the original specification review. The [follow-up](docs/remaining-validation.md) covers subsequent fixes. Imports now accept UTF-8 text and selectable-text PDF resumes; each extracted fact still requires confirmation. Arbitrary prose extraction can omit facts and requires a local model.
 
 The supplied Google Form was tested first through a browser test bridge, then using the **actual unpacked extension and live local Gemma**: **12 detected, 12 filled, zero failures, no submission**. Two Google Forms checkbox/radio bugs were fixed. The installed run used real Chrome storage, scripting and messaging; its extension UI ran at the extension URL in a tab, with website permission granted through browser automation. Native toolbar/permission-dialog UI coverage remains unverified. Full methods and limitations are in the completion review.
 
