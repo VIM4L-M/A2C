@@ -1,17 +1,19 @@
-import { Brain, FileText, Settings as SettingsIcon, Shield, Wand2, type LucideIcon } from 'lucide-react';
+import { Brain, FileText, Home, Settings as SettingsIcon, Shield, Wand2, type LucideIcon } from 'lucide-react';
 import { useState } from 'react';
 import { Badge, cx, type Tone } from '../components/ui';
 import { useApp, type HealthState } from '../hooks/useApp';
 import { AutofillTab } from './AutofillTab';
 import { DocumentsTab } from './DocumentsTab';
+import { HomeTab } from './HomeTab';
 import { MemoryTab } from './MemoryTab';
 import { Onboarding } from './Onboarding';
 import { PrivacyTab } from './PrivacyTab';
 import { SettingsTab } from './SettingsTab';
 
-type TabId = 'autofill' | 'memory' | 'templates' | 'privacy' | 'settings';
+type TabId = 'home' | 'autofill' | 'memory' | 'templates' | 'privacy' | 'settings';
 
 const TABS: Array<{ id: TabId; label: string; icon: LucideIcon }> = [
+  { id: 'home', label: 'Home', icon: Home },
   { id: 'autofill', label: 'Autofill', icon: Wand2 },
   { id: 'memory', label: 'Memory', icon: Brain },
   { id: 'templates', label: 'Templates', icon: FileText },
@@ -20,11 +22,19 @@ const TABS: Array<{ id: TabId; label: string; icon: LucideIcon }> = [
 ];
 
 /** Connection label, shown as "connected" only after a successful status check. */
-export function engineLabel(mode: 'gemma' | 'specialist' | 'mock', health: HealthState): { tone: Tone; text: string } {
+export function engineLabel(mode: 'auto' | 'gemma' | 'specialist' | 'mock', health: HealthState): { tone: Tone; text: string } {
   if (mode === 'mock') return { tone: 'warn', text: 'Mock mode' };
   if (health.state === 'checking') return { tone: 'neutral', text: 'Checking' };
   if (health.state === 'unauthorized') return { tone: 'danger', text: 'Token rejected' };
   if (health.state === 'unreachable') return { tone: 'danger', text: 'Backend offline' };
+  if (mode === 'auto') {
+    const s = health.data.specialist;
+    const g = health.data.gemma;
+    if (s.configured && s.reachable === true) return { tone: 'ok', text: 'Auto: specialist + Gemma 4' };
+    if (g.configured && g.reachable === true) return { tone: 'ok', text: 'Auto: Gemma 4' };
+    if (!s.configured && !g.configured) return { tone: 'warn', text: 'AI not set up' };
+    return { tone: g.reachable === false ? 'danger' : 'neutral', text: g.reachable === false ? 'AI offline' : 'AI unchecked' };
+  }
   const target = mode === 'specialist' ? health.data.specialist : health.data.gemma;
   const name = mode === 'specialist' ? 'Specialist' : 'Gemma 4';
   if (!target.configured) return { tone: 'warn', text: `${name} not set up` };
@@ -35,7 +45,7 @@ export function engineLabel(mode: 'gemma' | 'specialist' | 'mock', health: Healt
 
 export function App() {
   const { ready, settings, health, facts } = useApp();
-  const [tab, setTab] = useState<TabId>('autofill');
+  const [tab, setTab] = useState<TabId>('home');
 
   if (!ready) return <div className="font-pixel p-4 text-muted">Loading...</div>;
   if (!settings.onboarded) return <Onboarding />;
@@ -80,6 +90,7 @@ export function App() {
             <Brain className="size-5 text-muted" aria-hidden />
           </button>
         </div>
+        {tab === 'home' ? <HomeTab onGo={setTab} /> : null}
         {tab === 'memory' ? <MemoryTab /> : null}
         <div hidden={tab !== 'templates'}>
           <DocumentsTab />

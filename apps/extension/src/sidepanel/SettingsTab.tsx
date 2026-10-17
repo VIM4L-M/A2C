@@ -7,6 +7,7 @@ import { ActivityTab } from './ActivityTab';
 import { WorkspaceConnection } from './WorkspaceConnection';
 
 const MODES: Array<{ id: AIModeSetting; title: string; text: string }> = [
+  { id: 'auto', title: 'Auto (recommended)', text: 'Rules first, the fine-tuned specialist for unclear fields (about 1 s), Gemma 4 as the fallback and for drafts.' },
   { id: 'gemma', title: 'Gemma 4', text: 'Default. Gemma 4 understands field meanings via the A2C backend.' },
   { id: 'specialist', title: 'Fine-tuned specialist (experimental)', text: 'Tinker-trained mapping model, if your backend has one configured. Drafts still use Gemma.' },
   { id: 'mock', title: 'Mock mode', text: 'Deterministic keyword rules for offline demos. Not AI, clearly labelled.' },

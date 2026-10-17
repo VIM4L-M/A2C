@@ -188,7 +188,7 @@ export function AutofillTab() {
             </div>
           </div>
           <Button variant="primary" icon={ScanLine} loading={phase === 'scanning' || phase === 'mapping'} disabled={busy} onClick={doScan}>
-            {phase === 'mapping' ? (app.provider.kind === 'gemma' ? 'Asking Gemma...' : 'Matching...') : 'Scan Form'}
+            {phase === 'mapping' ? 'Matching...' : 'Scan Form'}
           </Button>
         </div>
         {scan ? (
@@ -237,7 +237,7 @@ export function AutofillTab() {
         <Notice
           tone="accent"
           icon={Gauge}
-          title={`${app.provider.kind === 'specialist' ? 'Specialist' : 'Gemma 4'} is reading the form... ${elapsed}s`}
+          title={`${app.settings.aiMode === 'auto' ? 'A2C' : app.provider.kind === 'specialist' ? 'Specialist' : 'Gemma 4'} is reading the form... ${elapsed}s`}
           action={
             <Button size="sm" onClick={skipAI}>
               Use instant rules instead
