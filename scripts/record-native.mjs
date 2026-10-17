@@ -22,7 +22,7 @@ if (!CHROME) throw new Error('Set CHROME_PATH to a Chromium or Chrome for Testin
 const LW = Number(process.env.LOGICAL_W ?? 1440);
 const LH = Number(process.env.LOGICAL_H ?? 900);
 const WIN_H = LH - 40; // leave the taskbar out of the recording
-const DEMO_PORT = 5190;
+const DEMO_PORT = 5174; // the extension only trusts the workspace at http://127.0.0.1:5174
 const CDP_PORT = 9333;
 const PS = join(ROOT, 'scripts/native-input.ps1');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -46,14 +46,14 @@ if (!(await up('http://127.0.0.1:8787/api/health'))) {
   for (let i = 0; i < 40 && !(await up('http://127.0.0.1:8787/api/health')); i += 1) await sleep(500);
 }
 await sleep(800);
-const BASE = `http://localhost:${DEMO_PORT}`;
+const BASE = `http://127.0.0.1:${DEMO_PORT}`;
 
 // ---- extension copy (localhost pre-granted) and a profile with the icon pinned to the toolbar -------------------
 const ext = join(work, 'ext');
 const profile = join(work, 'profile');
 cpSync(join(ROOT, 'apps/extension/dist'), ext, { recursive: true });
 const manifest = JSON.parse(readFileSync(join(ext, 'manifest.json'), 'utf8'));
-manifest.host_permissions = ['http://localhost/*'];
+manifest.host_permissions = ['http://127.0.0.1/*'];
 writeFileSync(join(ext, 'manifest.json'), JSON.stringify(manifest));
 
 const setup = await chromium.launchPersistentContext(profile, {
@@ -112,8 +112,8 @@ ffmpegProc = spawn(
 await sleep(1500);
 
 // ---- helpers ------------------------------------------------------------------------------------------------
-async function caption(text) {
-  await formPage.evaluate((t) => {
+async function caption(text, target = formPage) {
+  await target.evaluate((t) => {
     let el = document.getElementById('__a2c_caption');
     if (!el) {
       el = document.createElement('div');
@@ -126,6 +126,7 @@ async function caption(text) {
   log(text);
 }
 
+const ICON = [Math.round(LW - 155), 62]; // the pinned A2C icon (position is stable for this window size)
 let panel;
 let panelLeft = 0;
 const extraBrowsers = [];
@@ -170,6 +171,16 @@ const openTab = async (name) => {
   await realClick(b, async () => (await b.getAttribute('aria-current')) === 'page');
 };
 
+/** The side panel stays open across tabs in most cases; reopen it from the toolbar if it was closed. */
+async function ensurePanel() {
+  if (panel && !panel.isClosed()) return;
+  panel = undefined;
+  await formPage.bringToFront();
+  input('click', ICON[0], ICON[1], 900);
+  await sleep(2000);
+  await locatePanel();
+}
+
 // ---- scenes ---------------------------------------------------------------------------------------------------
 await caption('A normal website with a form. Open A2C from the browser toolbar.');
 await sleep(2800);
@@ -177,7 +188,6 @@ input('move', Math.round(LW / 2), 300, 900);
 await sleep(500);
 input('click', Math.round(LW / 2), 150, 600); // focus the window first: the first click on an inactive window only activates it
 await sleep(400);
-const ICON = [Math.round(LW - 155), 62]; // the pinned A2C icon (position is stable for this window size)
 const panelOpen = async () => (await fetch(`http://localhost:${CDP_PORT}/json`).then((r) => r.text(), () => '')).includes(`${extId}/sidepanel.html`);
 for (let attempt = 0; attempt < 3 && !(await panelOpen()); attempt += 1) {
   input('click', ICON[0], ICON[1], 1100);
@@ -185,13 +195,34 @@ for (let attempt = 0; attempt < 3 && !(await panelOpen()); attempt += 1) {
 }
 await locatePanel();
 await sleep(1200);
-await caption('The side panel opens beside the page. First run: one short optional step.');
+await caption('The side panel opens beside the page and offers your website account.');
+await sleep(2600);
+const connectBtn = panel.getByRole('button', { name: /Create or connect website account/ });
+const sitePage = ctx.waitForEvent('page', { timeout: 30000 });
+await realClick(connectBtn);
+const site = await sitePage;
+await site.waitForLoadState('domcontentloaded');
+await site.bringToFront();
+await site.getByLabel('Your name').waitFor({ timeout: 20000 });
+await caption('The website opens on its account page. Create your account once.', site);
 await sleep(2200);
-await panel.getByLabel(/Preferred name/).fill('Alex Example');
-await panel.getByLabel(/^Email/).fill('alex@example.com');
-await panel.getByLabel(/Profile type/).selectOption('Student');
-await sleep(900);
-await realClick(panel.getByRole('button', { name: 'Start using A2C' }), async () => !(await panel.getByRole('button', { name: 'Start using A2C' }).isVisible()));
+await site.getByLabel('Your name').fill('Ravi Kumar');
+await sleep(500);
+await site.getByLabel('Email').fill('ravi@example.com');
+await sleep(500);
+await site.getByLabel(/Profile type/).selectOption('Student');
+await sleep(1000);
+await site.getByRole('button', { name: 'Create account' }).click();
+await site.getByText(/Sent to your extension|Open this page|Open this workspace|did not accept/).first().waitFor({ timeout: 20000 });
+await caption('The account is sent to the extension. It is only a suggestion until you confirm it there.', site);
+await sleep(3200);
+await formPage.bringToFront();
+await sleep(1200);
+await ensurePanel();
+await caption('Back on the form: the panel shows the account to confirm.', formPage);
+await panel.getByRole('button', { name: 'Confirm and continue' }).waitFor({ timeout: 20000 });
+await sleep(2600);
+await realClick(panel.getByRole('button', { name: 'Confirm and continue' }), async () => !(await panel.getByRole('button', { name: 'Confirm and continue' }).isVisible()));
 await sleep(1200);
 
 await caption('Home: your usage, a profile checklist and a privacy summary. Counts stay in this browser.');
@@ -201,7 +232,7 @@ await openTab('Memory');
 await caption('Memory: paste notes. A2C proposes facts and YOU confirm each one before it is saved.');
 const ctxBox = panel.getByLabel('Context to review');
 await ctxBox.scrollIntoViewIfNeeded();
-await ctxBox.fill('College: Example Institute of Technology\nDegree: B.Tech\nMajor: Computer Science\nGraduation year: 2028\nSkills: Python, React, TypeScript\nGitHub: https://github.com/example');
+await ctxBox.fill('Name: Ravi Kumar\nCollege: Example Institute of Technology\nDegree: B.Tech\nMajor: Computer Science\nGraduation year: 2028\nSkills: Python, React, TypeScript\nGitHub: https://github.com/example');
 await sleep(900);
 await realClick(panel.getByRole('button', { name: 'Extract candidates' }), async () => (await panel.getByRole('checkbox', { name: /I confirm this fact/ }).count()) > 0);
 await sleep(1000);
